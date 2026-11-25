@@ -1,0 +1,40 @@
+{
+  "conversations": 100,
+  "concurrency": 10,
+  "url": "http://localhost:8000",
+  "hangs": 0,
+  "money_without_success": 0,
+  "failed_without_handoff": 0,
+  "conversation_status": {
+    "quoted": 97,
+    "handed_off": 3
+  },
+  "quote_request_status": {
+    "success": 97,
+    "failed": 3
+  },
+  "failure_reasons": {
+    "exhausted": 3
+  },
+  "attempt_status": {
+    "ok": 97,
+    "http_5xx": 22,
+    "timeout": 13
+  },
+  "attempts_per_request": {
+    "1": 73,
+    "2": 22,
+    "3": 5
+  },
+  "success_rate": 0.97,
+  "waiting_messages": 4,
+  "request_latency_ms": {
+    "p50": 46,
+    "p95": 3054,
+    "max": 6049
+  },
+  "turn_seconds": {
+    "p50": 0.06,
+    "max": 7.99
+  }
+}

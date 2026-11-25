@@ -10,3 +10,16 @@ services:
       QUOTE_SLOW_SECONDS: "8"
       # QUOTE_SEED: "42"   # descomente p/ falhas reproduziveis
     restart: unless-stopped
+
+  # Instância só para o teste de caos (make chaos): 60% de falha, 20% lenta, seed fixa.
+  # Fica num perfil separado para não subir no `docker compose up` normal.
+  quote-api-chaos:
+    build: ./quote-service
+    profiles: ["chaos"]
+    ports:
+      - "8001:8000"
+    environment:
+      QUOTE_FAILURE_RATE: "0.60"
+      QUOTE_SLOW_RATE: "0.20"
+      QUOTE_SLOW_SECONDS: "8"
+      QUOTE_SEED: "42"

@@ -57,7 +57,7 @@ class Agent:
             config={"configurable": {"thread_id": conversation_id}},
         )
         self._event(conversation_id, message_id, "message.received", "processed", wa_message_id)
-        return list(state.get("outbox", []))
+        return [*state.get("early_sent", []), *state.get("outbox", [])]
 
     def state(self, conversation_id: str) -> dict[str, Any]:
         snap = self.graph.get_state({"configurable": {"thread_id": conversation_id}})

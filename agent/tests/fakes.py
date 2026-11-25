@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections import deque
 from collections.abc import Iterable
 from typing import Any
@@ -33,8 +34,9 @@ def success_for(req: QuoteRequest) -> QuoteResult:
 class FakeGateway:
     """Responde sucesso por padrão; aceita uma fila de status para simular falhas."""
 
-    def __init__(self, script: Iterable[str] = ()) -> None:
+    def __init__(self, script: Iterable[str] = (), delay_s: float = 0.0) -> None:
         self.script: deque[str] = deque(script)
+        self.delay_s = delay_s
         self.requests: list[QuoteRequest] = []
         self._rules = load_snapshot()
 
@@ -43,6 +45,8 @@ class FakeGateway:
 
     async def quote(self, req: QuoteRequest, ctx: TraceContext) -> QuoteOutcome:
         self.requests.append(req)
+        if self.delay_s:
+            await asyncio.sleep(self.delay_s)
         n = len(self.requests)
         status = self.script.popleft() if self.script else "success"
         attempt = QuoteAttempt(
@@ -92,7 +96,9 @@ class Outbox:
 
 
 def make_agent(
-    gateway: FakeGateway | None = None, llm: FakeLLM | None = None
+    gateway: FakeGateway | None = None,
+    llm: FakeLLM | None = None,
+    wait_after_s: float = 4.0,
 ) -> tuple[Agent, FakeGateway, FakeLLM, InMemoryEventStore]:
     gw = gateway or FakeGateway()
     fake_llm = llm or FakeLLM()
@@ -104,5 +110,6 @@ def make_agent(
         outbound=Outbox(),
         clock=FixedClock(),
         vault=InMemoryVault(),
+        wait_message_after_s=wait_after_s,
     )
     return Agent(deps), gw, fake_llm, events

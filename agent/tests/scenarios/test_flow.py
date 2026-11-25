@@ -177,3 +177,19 @@ async def test_every_event_is_traceable_and_masked() -> None:
     attempts = [e for e in events.all if e.event_type == "quote_attempt"]
     assert attempts
     assert all(e.quote_request_id and e.quote_attempt_id for e in attempts)
+
+
+async def test_slow_quote_sends_waiting_message_first() -> None:
+    """REQ-23: cotação demorou mais que o limite -> 'estou calculando' antes do resultado."""
+    agent, _, _, events = make_agent(gateway=FakeGateway(delay_s=0.2), wait_after_s=0.05)
+    r = await agent.handle("c17", "35 anos, Onix 2022, cep 01310-100, completo")
+    assert r[0] == "Estou calculando sua cotação, só um instante."
+    assert "R$ 209,90" in joined(r[1:])
+    waiting = [e for e in events.all if e.payload.get("kind") == "waiting"]
+    assert len(waiting) == 1
+
+
+async def test_fast_quote_has_no_waiting_message() -> None:
+    agent, _, _, _ = make_agent(wait_after_s=1.0)
+    r = await agent.handle("c18", "35 anos, Onix 2022, cep 01310-100, completo")
+    assert "calculando" not in joined(r)

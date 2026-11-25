@@ -12,6 +12,7 @@ Toda mensagem passa por `deliver`, que roda o validador de saída antes de envia
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -57,6 +58,7 @@ class Deps:
     outbound: OutboundChannel
     clock: Clock
     vault: Vault
+    wait_message_after_s: float = 4.0
 
 
 class Nodes:
@@ -105,6 +107,7 @@ class Nodes:
             "turn_quote": None,
             "turn_handoff": None,
             "turn_recommended": None,
+            "early_sent": [],
             "outbox": [],
         }
         if not s.get("status"):
@@ -316,7 +319,7 @@ class Nodes:
             data_inicio=inicio,
         )
         ctx = TraceContext(conversation_id=s["conversation_id"], message_id=s["turn"]["message_id"])
-        outcome: QuoteOutcome = await self.d.gateway.quote(req, ctx)
+        outcome, early = await self._quote_with_wait_message(s, req, ctx)
 
         payload = {"plano_id": p.plano_id, "data_inicio": inicio.isoformat()}
         self.emit(
@@ -358,6 +361,7 @@ class Nodes:
             "attempts": [a.model_dump(mode="json") for a in outcome.attempts],
         }
         update: Update = {
+            "early_sent": early,
             "turn_quote": outcome.model_dump(mode="json", exclude={"result"}),
             "quotes": [*s.get("quotes", []), summary],
         }
@@ -370,6 +374,20 @@ class Nodes:
             }
             self.emit(s, "conversation.status", "quoted")
         return update
+
+    async def _quote_with_wait_message(
+        self, s: ConversationState, req: QuoteRequest, ctx: TraceContext
+    ) -> tuple[QuoteOutcome, list[str]]:
+        """REQ-23: no WhatsApp silêncio parece abandono. Passou do limite, avisa e segue."""
+        task = asyncio.create_task(self.d.gateway.quote(req, ctx))
+        done, _ = await asyncio.wait({task}, timeout=self.d.wait_message_after_s)
+        early: list[str] = []
+        if not done:
+            text = templates.waiting()
+            self.d.outbound.send(s["conversation_id"], text)
+            self.emit(s, "message.sent", "sent", payload={"chars": len(text), "kind": "waiting"})
+            early.append(text)
+        return await task, early
 
     def route_quote(self, s: ConversationState) -> Update:
         q = s.get("turn_quote") or {}

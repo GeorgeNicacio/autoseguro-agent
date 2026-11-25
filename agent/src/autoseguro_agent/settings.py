@@ -32,4 +32,5 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "AGENT_ANTHROPIC_API_KEY")
     )
 
-    db_path: str = "autoseguro.db"
+    db_path: str = "autoseguro.db"  # tabela events (append-only)
+    checkpoint_db_path: str = "checkpoints.db"  # estado do LangGraph (mascarado)

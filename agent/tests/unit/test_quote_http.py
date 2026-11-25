@@ -23,7 +23,8 @@ CTX = TraceContext(conversation_id="c1", message_id="m1")
 
 @pytest.fixture
 def gateway() -> HttpQuoteGateway:
-    return HttpQuoteGateway(base_url=BASE, timeout_s=0.2)
+    """Uma tentativa: aqui o foco é o mapeamento de cada resposta (retry: test_quote_resilience)."""
+    return HttpQuoteGateway(base_url=BASE, timeout_s=0.2, max_attempts=1)
 
 
 @respx.mock

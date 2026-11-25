@@ -28,6 +28,13 @@ MEDIA_PREFIX: dict[str, MessageType] = {
 }
 
 
+class PrintOutbound:
+    """Imprime cada mensagem no momento do envio (a de espera aparece antes da cotação)."""
+
+    def send(self, conversation_id: str, text: str) -> None:
+        print("Agente: " + text.replace("\n", "\n        "), flush=True)
+
+
 def format_event(e: Event) -> str:
     ids = " ".join(
         f"{k}={v}"
@@ -56,7 +63,7 @@ async def run(args: argparse.Namespace) -> int:
         print("ANTHROPIC_API_KEY não configurada. Use --fake-llm ou crie agent/.env.")
         return 2
 
-    app = await build_app(settings)
+    app = await build_app(settings, outbound=PrintOutbound(), log_json=args.log_json)
     conv = args.conversation or f"conv_{uuid.uuid4().hex[:8]}"
     print(
         f"conversation_id={conv} · LLM={settings.llm_provider} · regras={app.gateway.rules_source}"
@@ -83,15 +90,14 @@ async def run(args: argparse.Namespace) -> int:
         mtype: MessageType = next(
             (t for p, t in MEDIA_PREFIX.items() if text.lower().startswith(p)), "text"
         )
-        replies = await app.agent.handle(conv, text, message_type=mtype)
-        for r in replies:
-            print("Agente: " + r.replace("\n", "\n        "))
+        await app.agent.handle(conv, text, message_type=mtype)  # PrintOutbound imprime ao enviar
         if args.events:
             timeline = app.events.timeline(conv)
             for e in timeline[seen:]:
                 print(format_event(e))
             seen = len(timeline)
         print()
+    await app.aclose()
     return 0
 
 
@@ -102,6 +108,7 @@ def main() -> None:
     ap.add_argument("--events", action="store_true")
     ap.add_argument("--conversation")
     ap.add_argument("--script")
+    ap.add_argument("--log-json", action="store_true", help="log estruturado em stderr")
     sys.exit(asyncio.run(run(ap.parse_args())))
 
 

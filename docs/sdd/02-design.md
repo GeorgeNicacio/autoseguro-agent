@@ -153,8 +153,9 @@ quote(req) ──> breaker.allow()? ──não──> QuoteOutcome.failed(circui
 ```
 
 - `tenacity` para o laço de retry (`retry_if_exception_type(Retryable)`, `wait_exponential_jitter(initial=0.5, max=2)`, `stop_after_attempt(3) | stop_after_delay(12)`).
-- `CircuitBreaker` próprio (~40 linhas): `closed → open` após 5 falhas seguidas; `open` por 30 s; `half_open` deixa 1 chamada passar. Usa `Clock` para teste.
-- Mensagem de espera: `asyncio.wait_for` com sentinela de 4 s em paralelo à cotação.
+- `CircuitBreaker` próprio (~40 linhas): `closed → open` após 5 **pedidos** falhos seguidos (depois de todos os retries); `open` por 30 s; `half_open` deixa 1 pedido passar. Usa `Clock` para teste. Contar por tentativa foi a v1 e abria o circuito com a API só instável (ver `docs/evidence/chaos_report.md`).
+- Mensagem de espera: a cotação roda numa task; `asyncio.wait(timeout=4)` e, se não terminou, envia o template de espera e continua aguardando.
+- Timeout por tentativa com `asyncio.timeout` (teto da tentativa inteira) além do timeout do httpx (que vale por operação de rede).
 - `quote_request_id` por pedido, `quote_attempt_id` por tentativa, enviados também como header `X-Request-Id` (a API ignora, mas mostra a ideia de idempotência).
 
 ## 8. Garantia contra preço inventado — REQ-13

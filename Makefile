@@ -2,7 +2,7 @@
 UV ?= uv
 AGENT = cd agent &&
 
-.PHONY: setup up down test unit contract lint fmt typecheck check
+.PHONY: setup up down test unit contract chaos chaos-report api chat lint fmt typecheck check
 
 setup:        ## instala dependências do agente (uv + lockfile)
 	$(AGENT) $(UV) sync
@@ -21,6 +21,21 @@ unit:
 
 contract: up
 	$(AGENT) $(UV) run pytest -q tests/contract
+
+chaos:       ## sobe a API com 60% de falha + 20% lenta (seed 42) e roda o teste de caos
+	docker compose --profile chaos up --build -d quote-api-chaos
+	docker compose --profile chaos restart quote-api-chaos
+	$(AGENT) $(UV) run pytest -q -m chaos tests/chaos
+
+chaos-report: ## mesmo caos, gravando o relatório em docs/evidence
+	docker compose --profile chaos restart quote-api-chaos
+	$(AGENT) $(UV) run python -m autoseguro_agent.evaluation.chaos --out ../docs/evidence/chaos_report.json
+
+api: up       ## webhook WhatsApp + linha do tempo em http://localhost:8080
+	$(AGENT) $(UV) run uvicorn autoseguro_agent.api:app --port 8080
+
+chat: up      ## chat no terminal (sem chave: make chat ARGS=--fake-llm)
+	$(AGENT) $(UV) run python -m autoseguro_agent.cli --events $(ARGS)
 
 lint:
 	$(AGENT) $(UV) run ruff check . && $(UV) run ruff format --check .
