@@ -7,7 +7,7 @@
 ## Dia 0 — Preparação (30 min)
 
 - [ ] T0.1 Avisar quem enviou o desafio que começou; anotar horário no `ai-logs/README.md`.
-- [ ] T0.2 Instalar `uv` (não está nesta máquina): `py -m pip install uv` ou instalador oficial.
+- [x] T0.2 Instalar `uv`: `py -m pip install --user uv` (0.13.10; fora do PATH nesta máquina → usar `py -m uv`).
 - [ ] T0.3 **Repo novo** (decidido 2026-11-25): criar repo público próprio, preservando o histórico do upstream (`quote-service/`, `dataset/` intocados); renomear o remote original para `upstream` e apontar `origin` para o repo novo. Créditos ao upstream no README.
 - [ ] T0.4 `CLAUDE.md` com as regras do projeto (já rascunhado na raiz).
 - [ ] T0.5 Sessões do Claude Code já ficam em `~/.claude/projects/<slug>/*.jsonl` — exportar no fim.
@@ -16,7 +16,7 @@
 
 - [x] T1.1 `docker compose up --build`; `GET /health`; salvar `GET /planos` em `agent/src/autoseguro_agent/domain/plans_snapshot.json`. *(snapshot idêntico ao `plans.json`)*
 - [x] T1.2 `scripts/characterize_quote.py`: 200 chamadas → taxa de 5xx, de lentidão, p50/p95. Número vai para o README. *(evidência SMART M-01)*
-- [ ] T1.3 `analysis/dataset_report.py` (polars): desfechos, objeções frequentes, PII por conversa, carros > 20 anos. Só agregados, nada cru.
+- [x] T1.3 `analysis/dataset_report.py` (polars) → [`dataset_report.md`](../evidence/dataset_report.md) + [`dataset_findings.md`](../evidence/dataset_findings.md): desfechos, objeções frequentes, PII por conversa, carros > 20 anos. Só agregados, nada cru.
 - [ ] T1.4 Scaffold `agent/` com uv, ruff, mypy, pytest, Makefile.
 - [ ] T1.5 `domain/models.py` + `rules.py` + `eligibility.py` — testes de fronteira, incluindo data default = 1º do mês seguinte com `Clock` fixo (25/11/2026 → 01/12/2026; 31/12 → 01/01 do ano seguinte). **REQ-01, 10, 11**
 - [ ] T1.5b `domain/recommendation.py` — `recommend_plan` com teste por faixa de idade do veículo. **REQ-06**
@@ -55,7 +55,8 @@
 | G04 | Idade 80 | recusa local, handoff `out_of_policy` |
 | G05 | CEP alto risco (21…) | ×1,30 vindo da API |
 | G06 | Pede humano no meio | handoff `explicit_request` imediato |
-| G07 | Manda áudio | pede texto; repetiu → `media_unsupported` |
+| G07 | Manda foto da CNH, depois responde por texto | aviso "não preciso do arquivo", segue e cota; sem handoff |
+| G07b | Responde áudio 2× à mesma pergunta | `media_unsupported` |
 | G08 | Pede desconto após cotação | `price_negotiation` |
 | G09 | Manda CPF sem pedir | mascarado, aviso de minimização, segue |
 | G10 | API fora do ar (FAILURE=1.0) | mensagem honesta + `infra_unavailable`, zero R$ |
@@ -65,3 +66,6 @@
 | G14 | Uso para Uber | `out_of_scope` (`commercial_use`) |
 | G15 | Cotou e quer fechar | `ready_to_close` com resumo |
 | G16 | "Não sei qual plano" (carro 2012) | 1 cotação do `essencial` recomendado + oferta de completo/premium sem R$ |
+| G17 | "A franquia tá alta" após cotação | explica franquias do `/planos`, oferece recotar plano com franquia menor; sem handoff |
+| G18 | "Vou pensar" | resumo da cotação + oferta de retomar; conversa fica `quoted`, sem handoff |
+| G19 | Condutor de 65 anos | ×1,40 vindo da API |

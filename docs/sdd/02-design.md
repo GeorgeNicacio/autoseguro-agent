@@ -106,11 +106,12 @@ função predicado + um teste.
 | 6 | `agent_bug` | 422 de schema do FastAPI | alta | Erro nosso; humano assume e o log vira bug |
 | 7 | `price_negotiation` | intent `discount` / `competitor_match` / `special_installments` | média | Agente sem alçada de desconto |
 | 8 | `stuck` | `slot_failures[x] >= 2` ou `low_confidence_streak >= 2` | média | Evita loop e frustração |
-| 9 | `media_unsupported` | intent `media` (áudio/foto/documento) | média | O agente não lê mídia |
+| 9 | `media_unsupported` | lead responde com mídia **2×** ao mesmo slot pendente | média | O agente não lê mídia; 56,8% das conversas têm mídia (CNH, foto), por isso a 1ª mídia só gera aviso (dataset D2) |
 | 10 | `ready_to_close` | `status == quoted` e intent `wants_to_buy` | fim feliz | Contratação pede CPF/documentos/pagamento |
 
-Decisão de projeto: **mídia** abre handoff de prioridade média mas o agente antes pede
-"pode me mandar por texto?" uma vez — se repetir, handoff. (A confirmar na §6 do 01.)
+Decisão de projeto (baseada no dataset, D2): a 1ª mídia gera só o template "não preciso
+desse arquivo agora; me diz por texto …" e o fluxo segue. Só a 2ª mídia no mesmo slot
+pendente abre handoff.
 
 ## 6. Rastreabilidade — REQ-40..43
 
