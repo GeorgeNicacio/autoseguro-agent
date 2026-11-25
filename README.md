@@ -177,9 +177,10 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Falha real do `/quote` (padrão) | 20,5% 5xx · 8% lentas · 71,5% ok na 1ª | [caracterização](docs/evidence/quote_characterization.md) |
 | Sucesso com retry (padrão, 100 conversas) | **97%** (previsto 97,7%) · 0 travas · 0 R$ sem cotação | [caos](docs/evidence/chaos_report.md) |
 | Caos: 60% falha + 20% lenta, 50 conversas | **0 travas · 0 R$ sem cotação · 100% das falhas em handoff** · 52% cotadas | [caos](docs/evidence/chaos_report.md) |
-| Golden set | **20 de 20** cenários | [golden](docs/evidence/golden_report.md) |
+| Golden set (FakeLLM) | **20 de 20** cenários | [golden](docs/evidence/golden_report.md) |
+| Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
-| Testes automatizados | 257 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
+| Testes automatizados | 260 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
 
 Golden set (resumo; tabela completa na evidência):
 
@@ -195,14 +196,20 @@ Golden set (resumo; tabela completa na evidência):
 | G12 / G13 / G14 | CEP incompleto · sinistro · Uber | `stuck` · `out_of_scope` · passou |
 | G16 / G17 / G18 | Sem plano · franquia alta · vou pensar | recomenda 1 · explica · resume · passou |
 
+O que o Claude real ensinou: rodando o golden set com o modelo de verdade, a v1 do prompt
+fez 18/20 e expôs dois bugs de código e três ambiguidades de prompt ("quero cotar" lido
+como compra, "franquia alta" lido como reclamação). Com o prompt v2, 60/60 em três
+rodadas ([detalhes](docs/evidence/golden_claude.md)). A [demo](docs/demo-conversation.md)
+foi gerada com o Claude.
+
 O que o caos ensinou: a primeira versão do breaker contava **tentativas**; os critérios
 passavam, mas só 10% das conversas eram cotadas, porque o circuito abria com a API apenas
 instável. Contando **pedidos** que falham depois dos retries, foram 52%, perto do teórico.
 
 ## Limitações e o que eu faria com mais tempo
 
-- **Claude real ainda não validado ponta a ponta nesta entrega**: o adaptador está testado
-  com cliente simulado e roda com uma variável; o golden set aceita `--llm anthropic`.
+- O golden set com o Claude real tem 20 cenários; em produção eu ampliaria com conversas
+  reais anonimizadas e rodaria a cada mudança de prompt ou de modelo.
 - Cofre de PII em memória: o checkpoint sobrevive a restart, o cofre não. Faria uma tabela
   cifrada com acesso restrito.
 - Retry assíncrono da cotação depois do handoff (fila), avisando o lead se der certo.
@@ -225,7 +232,7 @@ agent/                      # o agente (uv, ruff, mypy, pytest)
     domain/                 # regras puras: modelos, elegibilidade, handoff, validador
     adapters/               # quote_http (resiliência), llm_anthropic, llm_fake, sqlite, breaker
     graph/                  # nós e montagem do LangGraph
-    prompts/extract_v1.md   # prompt versionado (formato SPARK)
+    prompts/extract_v2.md   # prompt versionado (formato SPARK; v1 mantido para histórico)
     templates.py            # toda mensagem com número ou de falha
     pii.py                  # mascarador + cofre
     api.py · cli.py         # webhook WhatsApp e chat no terminal

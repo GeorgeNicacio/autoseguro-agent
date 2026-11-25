@@ -13,6 +13,7 @@ Formato: contexto → decisão → alternativa descartada → trade-off. Datas e
 - **Decisão:** saída estruturada (`output_format=ExtractionResult`), `effort: low`, system prompt fixo (cacheável) e versionado em formato SPARK. Recusa do modelo e erros do SDK viram `LLMUnavailableError`.
 - **Alternativa:** temperatura 0 com JSON livre parseado na mão.
 - **Trade-off:** o determinismo vem do schema + validação + golden set, não da amostragem. Se a latência pesar, testar `claude-haiku-5-5` trocando só `AGENT_LLM_MODEL`.
+- **Prompt v2:** o golden set com o Claude real (v1: 18/20) levou a `wants_recommendation`, a "extraia mesmo se parecer fora da política" e a definições mais estreitas de `wants_to_buy` e `complaint`. Com o v2: 60/60 em três rodadas ([evidência](evidence/golden_claude.md)).
 
 ## ADR-003 · Preço só da API, por template, com validador de saída
 - **Contexto:** inventar preço é o pior erro possível.

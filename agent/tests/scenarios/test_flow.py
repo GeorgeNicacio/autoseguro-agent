@@ -213,3 +213,69 @@ async def test_llm_down_asks_to_repeat_then_hands_off() -> None:
     rule = next(e for e in events.all if e.event_type == "handoff.opened").payload["rule_id"]
     assert rule == "stuck"
     assert gw.requests == []
+
+
+# --- Regressões achadas no golden set com o Claude real (saídas reais reproduzidas) ----
+
+from autoseguro_agent.adapters.llm_fake import FakeLLM  # noqa: E402
+from autoseguro_agent.domain.extraction import (  # noqa: E402
+    ExtractionResult,
+    SlotInt,
+    SlotStr,
+)
+
+
+async def test_invalid_cep_then_no_answer_is_stuck_with_real_llm_output() -> None:
+    """G12 com Claude: CEP inválido devolvido como texto + 'sei la' = 2 turnos sem o dado."""
+    script = [
+        ExtractionResult(
+            idade=SlotInt(value=35, confidence="high"),
+            veiculo_ano=SlotInt(value=2022, confidence="high"),
+        ),
+        ExtractionResult(cep_token=SlotStr(value="1310-100", confidence="low")),
+        ExtractionResult(intents=["other"]),
+    ]
+    agent, gw, _, events = make_agent(llm=FakeLLM(script=script))
+    await agent.handle("c20", "tenho 35 anos e um Onix 2022")
+    await agent.handle("c20", "1310-100")
+    await agent.handle("c20", "sei la")
+    rule = next(e for e in events.all if e.event_type == "handoff.opened").payload["rule_id"]
+    assert rule == "stuck"
+    assert gw.requests == []
+
+
+async def test_asks_for_recommendation_even_with_plan_question() -> None:
+    """G16 com Claude: 'não sei, me indica' veio como plan_question; com a intenção nova,
+    a recomendação sai mesmo se o modelo também marcar pergunta sobre planos."""
+    script = [
+        ExtractionResult(
+            idade=SlotInt(value=40, confidence="high"),
+            veiculo_ano=SlotInt(value=2012, confidence="high"),
+            cep_token=SlotStr(value="<CEP_1>", confidence="high"),
+        ),
+        ExtractionResult(
+            intents=["plan_question", "wants_recommendation"], plan_question_topic="diferenca"
+        ),
+    ]
+    agent, gw, _, _ = make_agent(llm=FakeLLM(script=script))
+    await agent.handle("c21", "tenho 40 anos, um Gol 2012, cep 01310-100")
+    r = await agent.handle("c21", "não sei, me indica")
+    assert gw.requests[0].plano_id == "essencial"
+    assert "recomendo" in joined(r)
+
+
+async def test_plan_question_without_asking_recommendation_keeps_plan_pending() -> None:
+    script = [
+        ExtractionResult(
+            idade=SlotInt(value=40, confidence="high"),
+            veiculo_ano=SlotInt(value=2012, confidence="high"),
+            cep_token=SlotStr(value="<CEP_1>", confidence="high"),
+        ),
+        ExtractionResult(intents=["plan_question"], plan_question_topic="franquia"),
+    ]
+    agent, gw, _, _ = make_agent(llm=FakeLLM(script=script))
+    await agent.handle("c22", "tenho 40 anos, um Gol 2012, cep 01310-100")
+    r = await agent.handle("c22", "qual a franquia de cada um?")
+    assert gw.requests == []
+    assert "Franquia por plano" in joined(r)
+    assert agent.state("c22")["pending_slot"] == "plano_id"

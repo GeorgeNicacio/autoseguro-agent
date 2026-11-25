@@ -30,6 +30,7 @@ Intent = Literal[
     "accepts_quote",
     "will_think",
     "compare_plans",
+    "wants_recommendation",
     "plan_question",
     "greeting",
     "other",

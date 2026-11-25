@@ -21,7 +21,7 @@ from anthropic.types import OutputConfigParam
 from autoseguro_agent.domain.extraction import ExtractionRequest, ExtractionResult
 from autoseguro_agent.ports import LLMUnavailableError
 
-PROMPT_VERSION = "extract_v1"
+PROMPT_VERSION = "extract_v2"
 
 
 def load_prompt(name: str = PROMPT_VERSION) -> str:

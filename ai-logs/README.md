@@ -59,6 +59,14 @@ sessão do Claude Code mostra o plano sendo lido, conferido contra o código e c
    pergunta de retry e aviso de falha na mesma resposta. Agora o turno com LLM indisponível
    responde só "pode repetir?" e, na 2ª falha seguida, passa para humano (teste adicionado).
 
+10. **Golden set com o Claude real, prompt v1 (18/20).** Expôs dois bugs de código: CEP
+    inválido seguido de "sei la" não contava como "empacou", e "não sei, me indica" não
+    gerava recomendação porque o modelo marcava só pergunta sobre planos. Corrigidos com
+    testes que reproduzem a saída real do modelo.
+11. **Ambiguidades do prompt.** Num rascunho do v2, o Claude leu "quero cotar meu Corolla
+    2003" como compra e sem o ano, e "a franquia tá alta" como reclamação (que manda para
+    humano). O prompt v2 ganhou definições e exemplos; três rodadas seguidas deram 60/60.
+
 ## Sanitização
 
 `scripts/sanitize_ai_logs.py` remove chaves e tokens de API, e-mails, CPF, telefones, CEPs,

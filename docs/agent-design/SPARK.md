@@ -12,7 +12,7 @@
 > | **R** | Regras | O que ele nunca faz, e o que o código impõe? |
 > | **K** | Kit de saída | Em que formato responde, com quais exemplos? |
 >
-> O prompt de produção fica em `agent/src/autoseguro_agent/prompts/extract_v1.md`, versionado,
+> O prompt de produção fica em `agent/src/autoseguro_agent/prompts/extract_v2.md`, versionado,
 > com esta mesma estrutura. Mudou o prompt → novo arquivo `_v2` + golden set rodado.
 
 ---

@@ -40,6 +40,10 @@ _INTENT_PATTERNS: tuple[tuple[Intent, str], ...] = (
     ("special_installments", r"parcelar|parcelamento|em \d+x"),
     ("wants_to_buy", r"contratar|fechado|fechar|pode emitir|vamos nessa"),
     ("will_think", r"vou pensar|preciso pensar|ver com (minha|meu)"),
+    (
+        "wants_recommendation",
+        r"recomend|me indica|indica um|qual (voc[eê] )?(sugere|indica)|n[aã]o sei qual",
+    ),
     ("compare_plans", r"comparar|diferen[cç]a entre|e o (essencial|completo|premium)\??"),
     ("plan_question", r"franquia|cobre|cobertura|car[eê]ncia|o que inclui"),
     ("greeting", r"^\s*(oi|ol[aá]|bom dia|boa tarde|boa noite|eae)\b"),

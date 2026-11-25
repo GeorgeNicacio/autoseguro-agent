@@ -44,7 +44,7 @@ agent/
 │   │   └── outbound.py               # CliOutbound, OutboxOutbound
 │   ├── pii.py                        # PiiMasker + InMemoryVault
 │   ├── graph/{state.py,nodes.py,build.py}
-│   ├── prompts/extract_v1.md         # prompt versionado no formato SPARK
+│   ├── prompts/extract_v2.md         # prompt versionado no formato SPARK (v1 no histórico)
 │   ├── templates.py                  # TODAS as mensagens com números ou de falha
 │   ├── settings.py                   # pydantic-settings (timeouts, URLs, limites)
 │   ├── api.py                        # FastAPI: /webhook/whatsapp, /conversations/{id}, /health

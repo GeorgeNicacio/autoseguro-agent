@@ -24,7 +24,7 @@
 - [x] T1.7 `pii.py` + Vault — testes por formato e colisão CPF×telefone (dígito verificador). Recall 100% no dataset ([evidência](../evidence/pii_recall.md)). **REQ-50, 51**
 - [x] T1.8 `ports.py`, `FakeLLM`, `templates.py`, `OutputValidator` (+ contratos de extração, cotação e eventos; `FixedClock`). **REQ-13**
 - [x] T1.9 Grafo mínimo: ingest → mask → extract → route → ask/quote(sem retry) → present → validate_out. **REQ-01, 02**
-- [x] T1.10 CLI de chat ponta a ponta (`--fake-llm`, `--events`, `--script`) contra a API real. *Pendente: rodar com o Claude real quando houver `ANTHROPIC_API_KEY` em `agent/.env`.*
+- [x] T1.10 CLI de chat ponta a ponta (`--fake-llm`, `--events`, `--script`) contra a API real. *Validado com o Claude real: golden 60/60 em 3 rodadas e demo gerada com o modelo.*
 
 ## Dia 2 — Falhas, handoff e rastreio (onde está a nota)
 

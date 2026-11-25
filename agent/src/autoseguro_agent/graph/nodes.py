@@ -209,12 +209,15 @@ class Nodes:
                     errors.append("data_inicio")
                     failures["data_inicio"] = failures.get("data_inicio", 0) + 1
 
-            # REQ-06: lead não escolheu plano quando perguntado -> recomendação por regra.
+            # REQ-06: perguntado o plano, o lead pede indicação ou não escolhe nenhum ->
+            # recomendação por regra. Pergunta sobre os planos sem pedir indicação é
+            # respondida e o plano segue pendente.
+            wants_rec = "wants_recommendation" in ex.intents
             no_plan_answer = (
                 pending == "plano_id"
                 and "plano_id" not in changes
-                and "plan_question" not in ex.intents
                 and "plano_id" not in errors
+                and (wants_rec or "plan_question" not in ex.intents)
             )
             if no_plan_answer:
                 rec = recommend_plan(changes.get("veiculo_ano", profile.veiculo_ano), today)
@@ -222,11 +225,17 @@ class Nodes:
                 update["turn_recommended"] = rec
                 filled_high = True
 
+            # "Empacou" = turnos seguidos sem conseguir o dado pedido, seja porque veio
+            # inválido, seja porque não veio. 2 seguidos -> handoff `stuck`. Achado no
+            # golden set com o Claude real: CEP inválido + "sei la" não contava como 2.
+            pending_key = "cep_token" if pending == "cep" else pending
+            got_pending = pending_key is not None and pending_key in changes
             only_noise = set(ex.intents) <= {"other", "greeting"}
-            if pending and not filled_high and pending not in errors and only_noise:
-                streak += 1  # resposta sem o dado pedido: 2 seguidas -> handoff `stuck`
-            if filled_high:
+            if pending and not got_pending and (pending in errors or only_noise):
+                streak += 1
+            elif filled_high:
                 streak = 0
+            if filled_high:
                 update["media_strikes"] = 0  # mídia conta "2× no mesmo dado pendente"
 
         if "data_inicio" in changes:
