@@ -13,7 +13,7 @@ Toda mensagem passa por `deliver`, que roda o validador de saída antes de envia
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
@@ -60,6 +60,9 @@ class Deps:
     vault: Vault
     wait_message_after_s: float = 4.0
     tasks: Any = None  # TaskQueue (fila): agenda retry da cotação após handoff de infra
+    # LLMs disponíveis por nome ("fake", "anthropic"); a conversa escolhe qual usar.
+    # Vazio: sempre `llm`.
+    llms: dict[str, Any] = field(default_factory=dict)
     quote_retry_delays_s: tuple[int, ...] = (60, 300, 900)
 
 
@@ -106,6 +109,11 @@ class Nodes:
                 **kw,
             )
         )
+
+    def llm_for(self, s: ConversationState) -> LLMClient:
+        """LLM escolhido para a conversa (dashboard); senão, o padrão do ambiente."""
+        choice = s.get("llm_provider")
+        return self.d.llms.get(choice, self.d.llm) if choice else self.d.llm
 
     @staticmethod
     def profile(s: ConversationState) -> LeadProfile:
@@ -166,7 +174,8 @@ class Nodes:
             today_iso=self.today().isoformat(),
         )
         try:
-            result = self.d.llm.extract(req)
+            llm = self.llm_for(s)
+            result = llm.extract(req)
         except LLMUnavailableError as exc:
             self.emit(s, "llm.error", "failed", payload={"error": type(exc).__name__})
             # 2 falhas seguidas do LLM viram handoff `stuck` (mesma regra de "empacou").
@@ -174,7 +183,7 @@ class Nodes:
                 "turn_llm_failed": True,
                 "low_confidence_streak": s.get("low_confidence_streak", 0) + 1,
             }
-        stats = getattr(self.d.llm, "last_stats", None)
+        stats = getattr(llm, "last_stats", None)
         if stats is not None:  # REQ-80: tokens, custo, latência e cache de cada chamada
             self.emit(
                 s, "llm.call", stats.cache, latency_ms=stats.latency_ms, payload=stats.as_payload()

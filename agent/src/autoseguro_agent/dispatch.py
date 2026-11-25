@@ -34,6 +34,7 @@ class Dispatcher(Protocol):
         text: str,
         message_type: MessageType,
         wa_message_id: str | None = None,
+        llm: str | None = None,
     ) -> dict[str, Any]: ...
 
     async def submit_golden(self, llm: str) -> dict[str, Any]: ...
@@ -69,6 +70,7 @@ class RQDispatcher:
         text: str,
         message_type: MessageType,
         wa_message_id: str | None = None,
+        llm: str | None = None,
     ) -> dict[str, Any]:
         job = self._q.enqueue(
             f"{JOBS}.process_message_job",
@@ -76,6 +78,7 @@ class RQDispatcher:
             text,
             message_type,
             wa_message_id,
+            llm,
             job_timeout=120,
             result_ttl=3600,
         )
@@ -122,9 +125,14 @@ class InlineDispatcher:
         text: str,
         message_type: MessageType,
         wa_message_id: str | None = None,
+        llm: str | None = None,
     ) -> dict[str, Any]:
         messages = await self._agent.handle(
-            conversation_id, text, message_type=message_type, wa_message_id=wa_message_id
+            conversation_id,
+            text,
+            message_type=message_type,
+            wa_message_id=wa_message_id,
+            llm=llm,
         )
         job_id = f"inline_{len(self._jobs) + 1}"
         result = {"conversation_id": conversation_id, "messages": messages}

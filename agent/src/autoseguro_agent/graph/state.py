@@ -21,6 +21,7 @@ class TurnInput(TypedDict):
 class ConversationState(TypedDict, total=False):
     # --- persistente entre turnos ---
     conversation_id: str
+    llm_provider: str | None  # escolhido no dashboard; None = padrão
     status: ConvStatus
     profile: dict[str, Any]  # LeadProfile.model_dump(mode="json")
     pending_slot: str | None

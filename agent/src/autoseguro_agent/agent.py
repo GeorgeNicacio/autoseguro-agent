@@ -35,6 +35,7 @@ class Agent:
         *,
         message_type: MessageType = "text",
         wa_message_id: str | None = None,
+        llm: str | None = None,
     ) -> list[str]:
         if wa_message_id and self.deps.events.seen_wa_message(wa_message_id):
             self._event(conversation_id, None, "message.duplicate", "ignored", wa_message_id)
@@ -58,7 +59,8 @@ class Agent:
         )
         t0 = self.deps.clock.monotonic()
         state = await self.graph.ainvoke(
-            {"conversation_id": conversation_id, "turn": turn},
+            {"conversation_id": conversation_id, "turn": turn}
+            | ({"llm_provider": llm} if llm else {}),
             config={"configurable": {"thread_id": conversation_id}},
         )
         self._event(conversation_id, message_id, "message.received", "processed", wa_message_id)

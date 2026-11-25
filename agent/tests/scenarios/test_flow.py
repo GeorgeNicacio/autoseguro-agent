@@ -334,3 +334,18 @@ async def test_first_turn_slow_quote_greets_before_waiting() -> None:
     assert r[0].startswith("Olá!")
     assert r[1] == "Estou calculando sua cotação, só um instante."
     assert sum(m.startswith("Olá!") for m in r) == 1
+
+
+# --- LLM escolhido por conversa (dashboard) ------------------------------------------
+
+
+async def test_conversation_can_choose_llm_and_keeps_it() -> None:
+    default_llm, claude_like = FakeLLM(), FakeLLM()
+    agent, _, _, _ = make_agent(llm=default_llm)
+    agent.deps.llms = {"fake": default_llm, "anthropic": claude_like}
+    await agent.handle("c40", "Oi, tenho um Onix 2022", llm="anthropic")
+    await agent.handle("c40", "35")  # sem escolher de novo: mantém a da conversa
+    await agent.handle("c41", "Oi")  # outra conversa: padrão
+    assert [r.masked_text for r in claude_like.requests] == ["Oi, tenho um Onix 2022", "35"]
+    assert [r.masked_text for r in default_llm.requests] == ["Oi"]
+    assert (await agent.astate("c40"))["llm_provider"] == "anthropic"

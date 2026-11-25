@@ -28,8 +28,9 @@ docker compose exec agent python -m autoseguro_agent.cli --fake-llm --events
 ```
 
 Por padrão o agente sobe com o `FakeLLM` (extrator determinístico, sem chave). Para usar o
-Claude, coloque `ANTHROPIC_API_KEY=...` em `agent/.env` (não versionado) e suba com
-`AGENT_LLM_PROVIDER=anthropic docker compose up -d`.
+Claude, coloque `ANTHROPIC_API_KEY=...` em `agent/.env` (não versionado): o dashboard passa a
+oferecer **FakeLLM ou Claude em cada conversa** e no golden set. `AGENT_LLM_PROVIDER=anthropic`
+só muda o padrão (webhook e conversas sem escolha).
 
 Para desenvolver (precisa de [uv](https://docs.astral.sh/uv/)):
 
@@ -260,8 +261,9 @@ Redis fora do ar não derruba o agente: o cache vira no-op e o evento registra `
 
 **Dashboard** (`/dashboard`, HTML estático + APIs `/api/*`): KPIs (conversas, cotadas, sucesso
 do `/quote`, custo do LLM e economia do cache, custo por conversa, hit rate dos caches,
-latência do turno, fila), chat manual (texto e mídia simulada, pela mesma fila do webhook),
-botão do golden set (FakeLLM ou Claude), lista de conversas e, para cada uma, a transcrição
+latência do turno, fila), chat manual (texto e mídia simulada, pela mesma fila do webhook,
+com **FakeLLM ou Claude escolhido por conversa**, trocável no meio dela), botão do golden set
+(FakeLLM ou Claude), lista de conversas com o LLM usado e, para cada uma, a transcrição
 mascarada, a **cascata de spans por nó do grafo** em cada turno e todos os eventos com ids.
 
 ### Por que Redis e RQ aqui, e o que seria em produção

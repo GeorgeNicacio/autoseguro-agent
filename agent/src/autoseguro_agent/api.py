@@ -74,6 +74,7 @@ class ChatIn(BaseModel):
     conversation_id: str | None = None
     text: str = ""
     message_type: Literal["text", "image", "audio", "document"] = "text"
+    llm: Literal["fake", "anthropic"] | None = None  # None: mantém a da conversa ou o padrão
 
 
 class GoldenIn(BaseModel):
@@ -96,10 +97,12 @@ def create_api(
     dispatcher: Dispatcher | None = None,
     cache: CacheStore | None = None,
     llm_mode: str = "fake",
+    llm_options: list[str] | None = None,
 ) -> FastAPI:
     api = FastAPI(title="AutoSeguro Agent", version="0.2.0", lifespan=lifespan)
     dispatch: Dispatcher = dispatcher or InlineDispatcher(agent)
     store: CacheStore = cache or NullCache()
+    options = llm_options or ["fake"]
 
     @api.get("/health")
     def health() -> dict[str, str]:
@@ -154,13 +157,20 @@ def create_api(
     # --- chat manual e golden set -------------------------------------------
     @api.post("/api/chat")
     async def chat(body: ChatIn) -> dict[str, Any]:
+        if body.llm and body.llm not in options:
+            raise HTTPException(
+                status_code=400,
+                detail=f"LLM '{body.llm}' indisponível: configure ANTHROPIC_API_KEY em agent/.env",
+            )
         conv = body.conversation_id or f"chat_{uuid.uuid4().hex[:8]}"
         text = body.text if body.message_type == "text" else f"[{body.message_type}]"
-        sub = await dispatch.submit_message(conv, text, body.message_type)
+        sub = await dispatch.submit_message(conv, text, body.message_type, None, body.llm)
         return {"conversation_id": conv, **sub}
 
     @api.post("/api/golden")
     async def golden(body: GoldenIn) -> dict[str, Any]:
+        if body.llm not in options:
+            raise HTTPException(status_code=400, detail=f"LLM '{body.llm}' indisponível")
         return await dispatch.submit_golden(body.llm)
 
     @api.get("/api/golden/last")
@@ -190,6 +200,7 @@ def create_api(
             stats = {"error": "redis indisponível"}
         data = compute(events.all_events(), queue=dispatch.info(), hot=hot, cache_stats=stats)
         data["config"] = {
+            "llm_options": options,
             "llm_mode": llm_mode,
             "cache": "redis" if store.enabled else "off",
             "queue": dispatch.mode,
@@ -245,7 +256,7 @@ def _first_delivery(store: CacheStore, wa_message_id: str) -> bool:
 def _production_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(api: FastAPI) -> AsyncIterator[None]:
-        from autoseguro_agent.bootstrap import build_app
+        from autoseguro_agent.bootstrap import build_app, llm_options
 
         built = await build_app(persistent=True, log_json=True)
         inner = create_api(
@@ -254,6 +265,7 @@ def _production_app() -> FastAPI:
             dispatcher=built.dispatcher,
             cache=built.cache,
             llm_mode=built.settings.llm_provider,
+            llm_options=llm_options(built.settings),
         )
         api.router.routes.extend(inner.router.routes)
         yield

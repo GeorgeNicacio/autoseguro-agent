@@ -118,3 +118,15 @@ def test_media_from_dashboard(client: TestClient) -> None:
         "/api/chat", json={"conversation_id": first["conversation_id"], "message_type": "audio"}
     ).json()
     assert "Não preciso desse arquivo" in r["messages"][0]
+
+
+def test_chat_rejects_unavailable_llm(client: TestClient) -> None:
+    r = client.post("/api/chat", json={"text": "oi", "llm": "anthropic"})
+    assert r.status_code == 400
+    assert client.get("/api/metrics").json()["config"]["llm_options"] == ["fake"]
+
+
+def test_chat_with_explicit_fake_llm(client: TestClient) -> None:
+    r = client.post("/api/chat", json={"text": "Oi, tenho um Onix 2022", "llm": "fake"})
+    assert r.status_code == 200
+    assert any("idade" in m.lower() for m in r.json()["messages"])

@@ -12,12 +12,12 @@ def queue() -> Queue:
 
 async def test_message_is_enqueued_not_executed() -> None:
     q = queue()
-    sub = await RQDispatcher(q).submit_message("c1", "oi", "text", "wamid.1")
+    sub = await RQDispatcher(q).submit_message("c1", "oi", "text", "wamid.1", "anthropic")
     assert sub["status"] == "queued"
     job = q.fetch_job(sub["job_id"])
     assert job is not None
     assert job.func_name == f"{JOBS}.process_message_job"
-    assert job.args == ("c1", "oi", "text", "wamid.1")
+    assert job.args == ("c1", "oi", "text", "wamid.1", "anthropic")  # LLM vai junto
 
 
 async def test_golden_is_a_job() -> None:

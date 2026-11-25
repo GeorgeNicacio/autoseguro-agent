@@ -47,12 +47,14 @@ def conversation_summaries(events: list[Event]) -> list[dict[str, Any]]:
         tokens = 0
         quotes = 0
         turns = 0
+        model = None
         for e in evs:
             if e.event_type == "conversation.status":
                 status = e.status
             elif e.event_type == "handoff.opened":
                 rule = e.payload.get("rule_id")
             elif e.event_type == "llm.call":
+                model = e.payload.get("model") or model
                 cost += float(e.payload.get("cost_usd", 0.0))
                 tokens += int(e.payload.get("input_tokens", 0)) + int(
                     e.payload.get("output_tokens", 0)
@@ -67,6 +69,7 @@ def conversation_summaries(events: list[Event]) -> list[dict[str, Any]]:
                 "source": source_of(conv),
                 "status": status,
                 "handoff_rule": rule,
+                "llm": model,
                 "turns": turns,
                 "quotes": quotes,
                 "tokens": tokens,

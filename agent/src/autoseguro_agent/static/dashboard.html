@@ -95,6 +95,11 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
       <h2>Conversar manualmente</h2>
       <div class="row">
         <button id="newchat">Nova conversa</button>
+        <label for="chatllm" class="muted">LLM</label>
+        <select id="chatllm" aria-label="LLM da conversa">
+          <option value="fake">FakeLLM (sem custo)</option>
+          <option value="anthropic">Claude (custo real)</option>
+        </select>
         <span class="chip mono" id="chatid">—</span>
       </div>
       <div class="chatlog" id="chatlog" aria-live="polite"></div>
@@ -108,7 +113,8 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
         <button data-media="image">Foto</button>
         <button data-media="document">Documento</button>
       </div>
-      <p class="note">Passa pela mesma fila e pelo mesmo agente do webhook do WhatsApp.</p>
+      <p class="note">Passa pela mesma fila e pelo mesmo agente do webhook do WhatsApp. O LLM
+        escolhido vale para a conversa e pode ser trocado no meio dela.</p>
 
       <h2 style="margin-top:18px">Golden set</h2>
       <div class="row">
@@ -129,7 +135,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
       </div>
       <div class="scroll" style="max-height:330px; overflow-y:auto">
         <table>
-          <thead><tr><th>Conversa</th><th>Origem</th><th>Status</th><th>Regra de handoff</th><th>Turnos</th><th>Cotações</th><th>Tokens</th><th>Custo US$</th><th>Atualizada</th></tr></thead>
+          <thead><tr><th>Conversa</th><th>Origem</th><th>LLM</th><th>Status</th><th>Regra de handoff</th><th>Turnos</th><th>Cotações</th><th>Tokens</th><th>Custo US$</th><th>Atualizada</th></tr></thead>
           <tbody id="convs"></tbody>
         </table>
       </div>
@@ -191,6 +197,7 @@ function kv(target, pairs) {
 async function loadMetrics() {
   const m = await api("/api/metrics");
   const c = m.config || {};
+  applyLlmOptions(c.llm_options || ["fake"], c.llm_mode);
   $("#config").replaceChildren(
     el("span", { class: "chip" }, "LLM: ", el("b", {}, c.llm_mode === "anthropic" ? "Claude" : "FakeLLM")),
     el("span", { class: "chip" }, "cache: ", el("b", {}, c.cache)),
@@ -248,6 +255,22 @@ async function loadMetrics() {
   ]);
 }
 
+// ---------------- escolha do LLM ----------------
+let llmInit = false;
+function applyLlmOptions(options, defaultMode) {
+  for (const sel of [$("#chatllm"), $("#goldenllm")]) {
+    for (const opt of sel.options) {
+      const ok = options.includes(opt.value);
+      opt.disabled = !ok;
+      opt.textContent = opt.textContent.replace(" · sem chave", "") + (ok ? "" : " · sem chave");
+    }
+    if (!options.includes(sel.value)) sel.value = "fake";
+  }
+  if (!llmInit) { llmInit = true; if (options.includes(defaultMode)) $("#chatllm").value = defaultMode; }
+}
+const llmName = (v) => v === "anthropic" ? "Claude" : "FakeLLM";
+let convLlm = null;
+
 // ---------------- conversas ----------------
 let selected = null;
 async function loadConversations() {
@@ -258,13 +281,14 @@ async function loadConversations() {
     if (hide && r.source === "golden") continue;
     const tr = el("tr", { class: "click" },
       el("td", { class: "mono" }, r.conversation_id), el("td", {}, r.source),
+      el("td", {}, r.llm === "fake" ? "FakeLLM" : r.llm ? "Claude" : "—"),
       el("td", { class: "st " + r.status }, r.status), el("td", {}, r.handoff_rule || ""),
       el("td", {}, String(r.turns)), el("td", {}, String(r.quotes)), el("td", {}, fmtInt(r.tokens)),
       el("td", {}, fmtUsd(r.cost_usd)), el("td", { class: "muted" }, new Date(r.updated_at).toLocaleTimeString("pt-BR")));
     tr.addEventListener("click", () => showDetail(r.conversation_id));
     tb.append(tr);
   }
-  if (!tb.children.length) tb.append(el("tr", {}, el("td", { class: "muted", colspan: "9" }, "Nenhuma conversa ainda. Use o chat ou rode o golden set.")));
+  if (!tb.children.length) tb.append(el("tr", {}, el("td", { class: "muted", colspan: "10" }, "Nenhuma conversa ainda. Use o chat ou rode o golden set.")));
   if (selected) showDetail(selected, true);
 }
 async function showDetail(id, quiet) {
@@ -328,14 +352,16 @@ async function waitJob(sub, onDone) {
 // ---------------- chat ----------------
 let conv = null;
 function addMsg(kind, text) { const n = el("div", { class: "msg " + kind }, text); $("#chatlog").append(n); $("#chatlog").scrollTop = 1e9; return n; }
-function newChat() { conv = null; $("#chatid").textContent = "nova conversa"; $("#chatlog").replaceChildren(); addMsg("sys", "Mande a primeira mensagem como se fosse o lead."); }
+function newChat() { conv = null; convLlm = null; $("#chatid").textContent = "nova conversa"; $("#chatlog").replaceChildren(); addMsg("sys", "Mande a primeira mensagem como se fosse o lead."); }
 async function send(text, type = "text") {
   if (type === "text" && !text.trim()) return;
+  const llm = $("#chatllm").value;
+  if (llm !== convLlm) { addMsg("sys", `LLM desta conversa: ${llmName(llm)}`); convLlm = llm; }
   addMsg("lead", type === "text" ? text : `[${type}]`);
   $("#send").disabled = true;
   const wait = addMsg("sys", "processando na fila…");
   try {
-    const sub = await post("/api/chat", { conversation_id: conv, text, message_type: type });
+    const sub = await post("/api/chat", { conversation_id: conv, text, message_type: type, llm });
     conv = sub.conversation_id; $("#chatid").textContent = conv;
     await waitJob(sub, (done) => { wait.remove(); for (const m of done.messages) addMsg("agent", m); });
     refresh();

@@ -30,12 +30,20 @@ def _runtime() -> tuple[asyncio.AbstractEventLoop, App]:
 
 
 def process_message_job(
-    conversation_id: str, text: str, message_type: MessageType, wa_message_id: str | None
+    conversation_id: str,
+    text: str,
+    message_type: MessageType,
+    wa_message_id: str | None,
+    llm: str | None = None,
 ) -> dict[str, Any]:
     loop, app = _runtime()
     messages = loop.run_until_complete(
         app.agent.handle(
-            conversation_id, text, message_type=message_type, wa_message_id=wa_message_id
+            conversation_id,
+            text,
+            message_type=message_type,
+            wa_message_id=wa_message_id,
+            llm=llm,
         )
     )
     return {"conversation_id": conversation_id, "messages": messages}
