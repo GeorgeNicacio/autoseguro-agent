@@ -21,8 +21,8 @@
 - [x] T1.5 `domain/models.py` + `rules.py` + `eligibility.py` — testes de fronteira, incluindo data default = 1º do mês seguinte com `Clock` fixo (25/11/2026 → 01/12/2026; 31/12 → 01/01 do ano seguinte). **REQ-01, 10, 11**
 - [x] T1.5b `domain/recommendation.py` — `recommend_plan` com teste por faixa de idade do veículo. **REQ-06**
 - [x] T1.6 Teste de contrato com o exemplo do README (209,90 / 115,11). **REQ-13**
-- [ ] T1.7 `pii.py` + Vault — testes por formato e colisão CPF×telefone. **REQ-50, 51**
-- [ ] T1.8 `ports.py`, `FakeLLM`, `templates.py`, `OutputValidator`. **REQ-13**
+- [x] T1.7 `pii.py` + Vault — testes por formato e colisão CPF×telefone (dígito verificador). Recall 100% no dataset ([evidência](../evidence/pii_recall.md)). **REQ-50, 51**
+- [x] T1.8 `ports.py`, `FakeLLM`, `templates.py`, `OutputValidator` (+ contratos de extração, cotação e eventos; `FixedClock`). **REQ-13**
 - [ ] T1.9 Grafo mínimo: ingest → mask → extract → route → ask/quote(sem retry) → present → validate_out. **REQ-01, 02**
 - [ ] T1.10 CLI de chat ponta a ponta com o LLM real. Commit + push.
 

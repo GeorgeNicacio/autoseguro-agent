@@ -17,7 +17,7 @@
 | M-07 | Latência por pedido de cotação | p50 / p95 / máx de `quote_request` no caos | p95 ≤ 8 s, máx ≤ 12,5 s | Orçamento de 12 s respeitado | Dia 2 | _a medir_ |
 | M-08 | Taxa de sucesso de cotação com resiliência | `success / (success + failed)` com FAILURE 0.2 / SLOW 0.1 | ≥ 97% (3 tentativas com 30% de falha ≈ 1 − 0,3³) | Mostra que o retry paga | Dia 2 | _a medir_ |
 | M-09 | Vazamento de PII em log e checkpoint | regex de CPF/e-mail/telefone/placa sobre `events`, logs JSON e SQLite do checkpoint após o golden set | **0 ocorrências** | Critério de dados sensíveis | Dia 3 | _a medir_ |
-| M-10 | Recall do mascarador no dataset | PII encontrada pelo `pii.py` vs contagem por regex de referência nas ~2.500 conversas | ≥ 99% em CPF e e-mail; ≥ 95% em telefone e placa | Testa o mascarador contra formatos "reais" | Dia 1 | _a medir_ |
+| M-10 | Recall do mascarador no dataset | PII encontrada pelo `pii.py` vs contagem por regex de referência nas ~2.500 conversas | ≥ 99% em CPF e e-mail; ≥ 95% em telefone e placa | Testa o mascarador contra formatos "reais" | Dia 1 | **100% nos 5 tipos, 0 mensagens com PII crua, 2500/2500 idades preservadas** (2026-11-25, [evidência](../evidence/pii_recall.md)) |
 | M-11 | Rastreabilidade completa | eventos com `conversation_id` e `status` válidos / total; tentativas com `quote_request_id` pai | **100%** | Critério de rastreabilidade | Dia 2 | _a medir_ |
 | M-12 | Chamadas desperdiçadas em payload que seria recusado | tentativas com 422 `cotacao_recusada` evitáveis por validação local | **0** | Validação local antes de gastar retry | Dia 2 | _a medir_ |
 | M-13 | Setup do avaliador | tempo de clone limpo até `make demo` rodando | ≤ 2 comandos, ≤ 5 min | "Roda em um comando" | Dia 3 | _a medir_ |
