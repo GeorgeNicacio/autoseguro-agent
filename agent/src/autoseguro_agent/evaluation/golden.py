@@ -219,6 +219,51 @@ SCENARIOS: tuple[Scenario, ...] = (
         quotes=1,
         premio="293.86",
     ),
+    # --- jornadas até o fim do fluxo (aceite e o que acontece depois) ---------------
+    Scenario(
+        "G20",
+        "Jornada completa: recomendação, aceite curto e mensagem depois do handoff",
+        (
+            "Oi, quero cotar o seguro do meu carro",
+            "um Gol 2015",
+            "40",
+            "01310-100",
+            "não sei, me indica",
+            "sim",
+            "obrigado",
+        ),
+        "handed_off",
+        "ready_to_close",
+        quotes=1,
+        contains=("recomendo", "Essencial", "contratar", "consultor já está"),
+    ),
+    Scenario(
+        "G21",
+        "Aceite curto ('sim') depois da cotação",
+        (FULL, "sim"),
+        "handed_off",
+        "ready_to_close",
+        quotes=1,
+        premio="209.90",
+    ),
+    Scenario(
+        "G22",
+        "Muda a data de início: recota com pro-rata",
+        (FULL, "quero começar dia 15/12/2026"),
+        "quoted",
+        quotes=2,
+        premio="209.90",
+        contains=("Primeiro pagamento proporcional",),
+    ),
+    Scenario(
+        "G23",
+        "Compara com o Premium e aceita",
+        (FULL, "e o premium?", "pode ser esse"),
+        "handed_off",
+        "ready_to_close",
+        quotes=2,
+        premio="339.90",
+    ),
 )
 
 

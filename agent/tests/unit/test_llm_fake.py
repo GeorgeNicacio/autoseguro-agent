@@ -69,3 +69,25 @@ def test_script_overrides_heuristics_and_records_requests() -> None:
     assert llm.extract(req("oi")) == scripted
     assert llm.extract(req("oi")).intents == ["greeting"]  # script acabou: volta à heurística
     assert [r.masked_text for r in llm.requests] == ["oi", "oi"]
+
+
+@pytest.mark.parametrize(
+    ("text", "accepted"),
+    [
+        ("sim", True),
+        ("Sim!", True),
+        ("pode ser esse", True),
+        ("quero", True),
+        ("quero começar dia 15/12/2026", False),
+        ("sim, mas e o premium?", False),
+    ],
+)
+def test_short_affirmative_only_with_open_question(text: str, accepted: bool) -> None:
+    from autoseguro_agent.adapters.llm_fake import FakeLLM as Fake
+
+    r = Fake().extract(
+        ExtractionRequest(
+            masked_text=text, pending_slot=None, today_iso="2026-11-25", awaiting="accept_quote"
+        )
+    )
+    assert ("accepts_quote" in r.intents) is accepted

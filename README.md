@@ -183,7 +183,7 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Falha real do `/quote` (padrão) | 20,5% 5xx · 8% lentas · 71,5% ok na 1ª | [caracterização](docs/evidence/quote_characterization.md) |
 | Sucesso com retry (padrão, 100 conversas) | **97%** (previsto 97,7%) · 0 travas · 0 R$ sem cotação | [caos](docs/evidence/chaos_report.md) |
 | Caos: 60% falha + 20% lenta, 50 conversas | **0 travas · 0 R$ sem cotação · 100% das falhas em handoff** · 52% cotadas | [caos](docs/evidence/chaos_report.md) |
-| Golden set (FakeLLM) | **20 de 20** cenários | [golden](docs/evidence/golden_report.md) |
+| Golden set (FakeLLM) | **24 de 24** cenários (inclui jornadas até o aceite) | [golden](docs/evidence/golden_report.md) |
 | Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
 | Testes automatizados | 293 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |

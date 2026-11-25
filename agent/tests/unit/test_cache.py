@@ -155,3 +155,13 @@ async def test_rules_are_cached_with_version(cache: RedisCache) -> None:
     await gw.load_rules()
     assert gw.rules_source in {"api", "snapshot", "cache"}
     assert gw.rules().version == load_snapshot().version
+
+
+def test_awaiting_question_is_part_of_the_key(cache: RedisCache) -> None:
+    """Um 'sim' com cotação na mesa não pode reaproveitar o 'sim' sem pergunta pendente."""
+    inner = FakeLLM()
+    llm = CachedLLM(inner, cache, model="m", prompt_version="v")
+    base = ExtractionRequest(masked_text="sim", pending_slot=None, today_iso="2026-11-25")
+    llm.extract(base)
+    llm.extract(base.model_copy(update={"awaiting": "accept_quote"}))
+    assert len(inner.requests) == 2

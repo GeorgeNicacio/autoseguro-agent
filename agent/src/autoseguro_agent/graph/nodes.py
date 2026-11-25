@@ -172,6 +172,8 @@ class Nodes:
             pending_slot=s.get("pending_slot"),
             known_slots=known,
             today_iso=self.today().isoformat(),
+            # Com cotação na mesa, a última pergunta do agente é "quer seguir com esse plano?".
+            awaiting="accept_quote" if s.get("status") == "quoted" else None,
         )
         try:
             llm = self.llm_for(s)
@@ -322,6 +324,7 @@ class Nodes:
             low_confidence_streak=s.get("low_confidence_streak", 0),
             media_strikes=media,
             quoted=s.get("status") == "quoted",
+            requote_pending=s.get("status") == "quoted" and self._needs_quote(s),
         )
 
     def _decision(self, s: ConversationState) -> dict[str, str] | None:

@@ -102,3 +102,9 @@ def test_policy_refusal_carries_reason() -> None:
     assert d is not None
     assert d.motivo == "Veiculo velho."
     assert d.priority == "alta"
+
+
+def test_ready_to_close_waits_for_requote() -> None:
+    """Aceite junto com troca de plano/data: recota primeiro, o lead precisa ver o preço novo."""
+    ctx = HandoffContext(quoted=True, intents=frozenset({"accepts_quote"}), requote_pending=True)
+    assert decide_handoff(ctx) is None

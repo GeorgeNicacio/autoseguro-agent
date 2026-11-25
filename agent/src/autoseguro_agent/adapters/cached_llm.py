@@ -58,6 +58,7 @@ class CachedLLM:
                 self._model,
                 normalize(req.masked_text),
                 req.pending_slot or "-",
+                req.awaiting or "-",  # "sim" só reaproveita no mesmo contexto
                 req.today_iso,
             ]
         )

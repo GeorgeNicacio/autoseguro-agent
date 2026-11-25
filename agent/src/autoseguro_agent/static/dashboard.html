@@ -122,7 +122,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
           <option value="fake">FakeLLM (sem custo)</option>
           <option value="anthropic">Claude (custo real)</option>
         </select>
-        <button class="primary" id="rungolden">Rodar 20 cenários</button>
+        <button class="primary" id="rungolden">Rodar cenários</button>
         <span class="muted" id="goldenstatus"></span>
       </div>
       <div class="scroll" id="goldenres" style="margin-top:10px"></div>
@@ -199,7 +199,9 @@ async function loadMetrics() {
   const c = m.config || {};
   applyLlmOptions(c.llm_options || ["fake"], c.llm_mode);
   $("#config").replaceChildren(
-    el("span", { class: "chip" }, "LLM: ", el("b", {}, c.llm_mode === "anthropic" ? "Claude" : "FakeLLM")),
+    el("span", { class: "chip", title: "Usado pelo webhook e por conversas sem escolha; o chat escolhe por conversa" },
+      "LLM padrão: ", el("b", {}, llmName(c.llm_mode))),
+    el("span", { class: "chip" }, "disponíveis: ", el("b", {}, (c.llm_options || ["fake"]).map(llmName).join(", "))),
     el("span", { class: "chip" }, "cache: ", el("b", {}, c.cache)),
     el("span", { class: "chip" }, "fila: ", el("b", {}, c.queue)),
   );
@@ -388,17 +390,30 @@ function goldenTable(r) {
   t.append(tb);
   $("#goldenres").replaceChildren(el("div", { class: r.passed === r.total ? "ok st" : "bad st" }, `${r.passed} de ${r.total} passaram · ${r.llm}`), t);
 }
+// Confirmação na própria página: o confirm() do navegador é bloqueado no painel
+// embutido e o clique "não fazia nada" (achado no teste do golden com o Claude).
+let goldenArmed = null;
+function resetGoldenButton() { goldenArmed = null; $("#rungolden").textContent = "Rodar cenários"; $("#rungolden").classList.add("primary"); }
+$("#goldenllm").addEventListener("change", resetGoldenButton);
 $("#rungolden").addEventListener("click", async () => {
   const llm = $("#goldenllm").value;
-  if (llm === "anthropic" && !confirm("Rodar os 20 cenários com o Claude usa a API paga. Continuar?")) return;
+  if (llm === "anthropic" && goldenArmed !== llm) {
+    goldenArmed = llm;
+    $("#rungolden").textContent = "Confirmar: custo real (~US$ 0,30)";
+    $("#goldenstatus").textContent = "clique de novo para rodar com o Claude";
+    setTimeout(() => { if (goldenArmed) { resetGoldenButton(); $("#goldenstatus").textContent = ""; } }, 8000);
+    return;
+  }
+  resetGoldenButton();
   $("#rungolden").disabled = true; $("#goldenstatus").textContent = "na fila…";
   try {
     const sub = await post("/api/golden", { llm });
-    $("#goldenstatus").textContent = "rodando (1 a 2 min)…";
+    $("#goldenstatus").textContent = llm === "anthropic" ? "rodando com o Claude (2 a 3 min)…" : "rodando (cerca de 30 s)…";
     await waitJob(sub, (done) => { goldenTable(done.result); $("#goldenstatus").textContent = ""; });
     refresh();
   } catch (e) { $("#goldenstatus").textContent = "erro: " + e.message; }
   finally { $("#rungolden").disabled = false; }
+
 });
 
 // ---------------- ciclo ----------------

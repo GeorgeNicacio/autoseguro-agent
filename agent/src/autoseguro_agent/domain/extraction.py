@@ -61,6 +61,9 @@ class ExtractionRequest(BaseModel):
     pending_slot: SlotName | None
     known_slots: dict[str, str] = Field(default_factory=dict)
     today_iso: str
+    # Pergunta de sim/não em aberto. Sem isso, um "sim" solto é ambíguo para o modelo
+    # (achado numa conversa real: "sim" depois de "quer seguir com esse plano?").
+    awaiting: Literal["accept_quote"] | None = None
 
 
 class ExtractionResult(BaseModel):

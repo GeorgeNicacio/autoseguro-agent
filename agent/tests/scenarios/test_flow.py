@@ -349,3 +349,24 @@ async def test_conversation_can_choose_llm_and_keeps_it() -> None:
     assert [r.masked_text for r in claude_like.requests] == ["Oi, tenho um Onix 2022", "35"]
     assert [r.masked_text for r in default_llm.requests] == ["Oi"]
     assert (await agent.astate("c40"))["llm_provider"] == "anthropic"
+
+
+async def test_short_yes_after_quote_is_acceptance() -> None:
+    """Conversa real no dashboard: 'sim' depois de 'quer seguir com esse plano?' repetia a
+    pergunta. Com a pergunta pendente no pedido ao LLM, vira aceite e vai para o consultor."""
+    agent, _, llm, events = make_agent()
+    await agent.handle("c50", "35 anos, Onix 2022, cep 01310-100, completo")
+    r = await agent.handle("c50", "sim")
+    assert llm.requests[-1].awaiting == "accept_quote"
+    assert "consultor" in joined(r)
+    rule = next(e for e in events.all if e.event_type == "handoff.opened").payload["rule_id"]
+    assert rule == "ready_to_close"
+
+
+async def test_yes_without_open_question_is_not_acceptance() -> None:
+    agent, gw, llm, _ = make_agent()
+    await agent.handle("c51", "Oi, tenho um Onix 2022")
+    await agent.handle("c51", "sim")
+    assert llm.requests[-1].awaiting is None
+    assert agent.state("c51")["status"] == "active"
+    assert gw.requests == []

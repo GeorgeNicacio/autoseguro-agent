@@ -2,7 +2,7 @@
 
 Gerado por `python -m autoseguro_agent.evaluation.golden` · LLM: FakeLLM · quote-service real sem falha simulada (G10 e G11 com falha injetada).
 
-**20 de 20 cenários passaram.**
+**24 de 24 cenários passaram.**
 
 | # | Cenário | Esperado | Obtido | Resultado |
 |---|---|---|---|---|
@@ -26,3 +26,7 @@ Gerado por `python -m autoseguro_agent.evaluation.golden` · LLM: FakeLLM · quo
 | G17 | Acha a franquia alta | quoted | quoted · R$ 209,90 | passou |
 | G18 | Vou pensar | quoted | quoted · R$ 209,90 | passou |
 | G19 | Condutor de 65 anos (×1,40) | quoted · R$ 293,86 | quoted · R$ 293,86 | passou |
+| G20 | Jornada completa: recomendação, aceite curto e mensagem depois do handoff | handed_off · ready_to_close | handed_off · ready_to_close · R$ 173,85 | passou |
+| G21 | Aceite curto ('sim') depois da cotação | handed_off · ready_to_close · R$ 209,90 | handed_off · ready_to_close · R$ 209,90 | passou |
+| G22 | Muda a data de início: recota com pro-rata | quoted · R$ 209,90 | quoted · R$ 209,90 | passou |
+| G23 | Compara com o Premium e aceita | handed_off · ready_to_close · R$ 339,90 | handed_off · ready_to_close · R$ 339,90 | passou |

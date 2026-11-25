@@ -47,6 +47,8 @@ class HandoffContext:
     low_confidence_streak: int = 0
     media_strikes: int = 0
     quoted: bool = False
+    # A mensagem muda plano ou data: recota antes de fechar (o lead precisa ver o preço novo).
+    requote_pending: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,7 +146,11 @@ HANDOFF_RULES: tuple[HandoffRule, ...] = (
         "ready_to_close",
         "fim_feliz",
         "Contratação pede CPF, documentos e pagamento: humano com contexto completo.",
-        lambda c: c.quoted and bool(c.intents & {"wants_to_buy", "accepts_quote"}),
+        lambda c: (
+            c.quoted
+            and not c.requote_pending
+            and bool(c.intents & {"wants_to_buy", "accepts_quote"})
+        ),
     ),
 )
 

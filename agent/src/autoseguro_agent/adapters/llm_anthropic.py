@@ -23,7 +23,8 @@ from autoseguro_agent.domain.extraction import ExtractionRequest, ExtractionResu
 from autoseguro_agent.ports import LLMUnavailableError
 from autoseguro_agent.telemetry import LLMCallStats, cost_usd
 
-PROMPT_VERSION = "extract_v2"
+PROMPT_VERSION = "extract_v3"
+AWAITING = {"accept_quote": "se o lead quer seguir com o plano que acabou de ser cotado"}
 
 
 def load_prompt(name: str = PROMPT_VERSION) -> str:
@@ -34,6 +35,7 @@ def render_user_message(req: ExtractionRequest) -> str:
     return (
         f"<data_de_hoje>{req.today_iso}</data_de_hoje>\n"
         f"<dado_esperado>{req.pending_slot or 'nenhum'}</dado_esperado>\n"
+        f"<pergunta_pendente>{AWAITING.get(req.awaiting or '', 'nenhuma')}</pergunta_pendente>\n"
         f"<dados_ja_coletados>{json.dumps(req.known_slots, ensure_ascii=False)}"
         "</dados_ja_coletados>\n"
         f"<mensagem_do_lead>{req.masked_text}</mensagem_do_lead>"

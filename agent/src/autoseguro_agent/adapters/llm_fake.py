@@ -56,6 +56,11 @@ _TOPICS: tuple[tuple[PlanTopic, str], ...] = (
     ("diferenca", r"diferen[cç]a|comparar"),
     ("coberturas", r"cobre|cobertura|inclui"),
 )
+# Resposta afirmativa CURTA e completa: "quero começar dia 15" não é aceite.
+_AFFIRMATIVE = re.compile(
+    r"\s*(sim|s|ss|isso|quero|quero sim|sim quero|pode ser|pode ser esse|pode|ok|beleza|"
+    r"bora|vamos|esse mesmo|seguir com esse|pode seguir|fechado)[\s!.,]*"
+)
 _PLAN = re.compile(r"\b(essencial|completo|premium)\b", re.IGNORECASE)
 _AGE = re.compile(r"\b(\d{1,3})\s*anos\b", re.IGNORECASE)
 _YEAR = re.compile(r"\b(19[5-9]\d|20\d{2})\b")
@@ -120,6 +125,12 @@ class FakeLLM:
             data = SlotStr(value=f"{y:04d}-{mo:02d}-{d:02d}", confidence="high")
 
         intents: list[Intent] = [i for i, rx in _INTENT_PATTERNS if re.search(rx, low)]
+        if (
+            req.awaiting == "accept_quote"
+            and _AFFIRMATIVE.fullmatch(low)
+            and "accepts_quote" not in intents
+        ):
+            intents.append("accepts_quote")
         topic = next((t for t, rx in _TOPICS if re.search(rx, low)), None)
 
         if not intents and idade is None and req.pending_slot == "idade" and re.search(r"\d", low):
