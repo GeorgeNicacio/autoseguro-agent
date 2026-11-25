@@ -17,10 +17,10 @@
 - [x] T1.1 `docker compose up --build`; `GET /health`; salvar `GET /planos` em `agent/src/autoseguro_agent/domain/plans_snapshot.json`. *(snapshot idêntico ao `plans.json`)*
 - [x] T1.2 `scripts/characterize_quote.py`: 200 chamadas → taxa de 5xx, de lentidão, p50/p95. Número vai para o README. *(evidência SMART M-01)*
 - [x] T1.3 `analysis/dataset_report.py` (polars) → [`dataset_report.md`](../evidence/dataset_report.md) + [`dataset_findings.md`](../evidence/dataset_findings.md): desfechos, objeções frequentes, PII por conversa, carros > 20 anos. Só agregados, nada cru.
-- [ ] T1.4 Scaffold `agent/` com uv, ruff, mypy, pytest, Makefile.
-- [ ] T1.5 `domain/models.py` + `rules.py` + `eligibility.py` — testes de fronteira, incluindo data default = 1º do mês seguinte com `Clock` fixo (25/11/2026 → 01/12/2026; 31/12 → 01/01 do ano seguinte). **REQ-01, 10, 11**
-- [ ] T1.5b `domain/recommendation.py` — `recommend_plan` com teste por faixa de idade do veículo. **REQ-06**
-- [ ] T1.6 Teste de contrato com o exemplo do README (209,90 / 115,11). **REQ-13**
+- [x] T1.4 Scaffold `agent/` com uv, ruff, mypy, pytest, Makefile.
+- [x] T1.5 `domain/models.py` + `rules.py` + `eligibility.py` — testes de fronteira, incluindo data default = 1º do mês seguinte com `Clock` fixo (25/11/2026 → 01/12/2026; 31/12 → 01/01 do ano seguinte). **REQ-01, 10, 11**
+- [x] T1.5b `domain/recommendation.py` — `recommend_plan` com teste por faixa de idade do veículo. **REQ-06**
+- [x] T1.6 Teste de contrato com o exemplo do README (209,90 / 115,11). **REQ-13**
 - [ ] T1.7 `pii.py` + Vault — testes por formato e colisão CPF×telefone. **REQ-50, 51**
 - [ ] T1.8 `ports.py`, `FakeLLM`, `templates.py`, `OutputValidator`. **REQ-13**
 - [ ] T1.9 Grafo mínimo: ingest → mask → extract → route → ask/quote(sem retry) → present → validate_out. **REQ-01, 02**
