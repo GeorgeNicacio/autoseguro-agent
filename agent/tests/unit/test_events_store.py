@@ -88,3 +88,8 @@ def test_logging_store_writes_json_with_ids(capsys: pytest.CaptureFixture[str]) 
     assert data["conversation_id"] == "c1"
     assert data["quote_request_id"] == "qr_9"
     assert data["status"] == "http_5xx"
+
+
+def test_redact_processor_keeps_trace_ids() -> None:
+    out = redact_processor(None, "info", {"conversation_id": "wa_4ea51968042fa9ab", "event": "x"})
+    assert out["conversation_id"] == "wa_4ea51968042fa9ab"

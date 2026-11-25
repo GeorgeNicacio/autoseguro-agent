@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,3 +34,8 @@ class Settings(BaseSettings):
 
     db_path: str = "autoseguro.db"  # tabela events (append-only)
     checkpoint_db_path: str = "checkpoints.db"  # estado do LangGraph (mascarado)
+
+    @field_validator("anthropic_api_key", mode="before")
+    @classmethod
+    def _empty_is_none(cls, v: object) -> object:
+        return None if v in ("", None) else v

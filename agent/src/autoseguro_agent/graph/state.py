@@ -42,5 +42,6 @@ class ConversationState(TypedDict, total=False):
     turn_quote: dict[str, Any] | None  # QuoteOutcome do turno
     turn_handoff: dict[str, str] | None  # HandoffDecision
     turn_recommended: str | None
+    turn_llm_failed: bool
     early_sent: list[str]  # mensagens já enviadas no meio do turno (espera)
     outbox: list[str]

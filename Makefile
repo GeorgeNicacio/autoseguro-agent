@@ -2,13 +2,23 @@
 UV ?= uv
 AGENT = cd agent &&
 
-.PHONY: setup up down test unit contract chaos chaos-report api chat lint fmt typecheck check
+.PHONY: setup up down demo golden test unit contract chaos chaos-report api chat lint fmt typecheck check
 
 setup:        ## instala dependências do agente (uv + lockfile)
 	$(AGENT) $(UV) sync
 
 up:           ## sobe o quote-service
 	docker compose up --build -d quote-api
+
+demo:         ## conversa completa com timeout, 5xx e retry visíveis (só precisa de Docker)
+	docker compose up --build -d
+	docker compose --profile demo up --build -d quote-api-demo
+	docker compose --profile demo restart quote-api-demo
+	docker compose exec agent python -m autoseguro_agent.evaluation.demo --url http://quote-api-demo:8000
+
+golden:       ## golden set (20 cenários) contra a API sem falha simulada
+	docker compose --profile golden up --build -d quote-api-stable
+	$(AGENT) $(UV) run pytest -q -m golden tests/scenarios/test_golden.py
 
 down:
 	docker compose down

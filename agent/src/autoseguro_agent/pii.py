@@ -20,19 +20,19 @@ PiiKind = Literal["EMAIL", "CPF", "PLACA", "CEP", "TEL"]
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _CPF_FORMATTED = re.compile(r"(?<!\d)\d{3}\.\d{3}\.\d{3}-\d{2}(?!\d)")
-_DIGITS_11 = re.compile(r"(?<![\d.\-/])\d{11}(?![\d.\-/])")
+_DIGITS_11 = re.compile(r"(?<![\w.\-/])\d{11}(?![\w.\-/])")
 _PLACA = re.compile(
     r"\b[A-Za-z]{3}\d[A-Za-z]\d{2}\b"  # Mercosul (padrão distinto: aceita minúsculas)
     r"|\b[A-Z]{3}-?\d{4}\b"  # antiga, maiúsculas
     r"|\b[A-Za-z]{3}-\d{4}\b"  # antiga com hífen, qualquer caixa
 )
-_CEP = re.compile(r"(?<![\d.\-/])(?:\d{5}-\d{3}|\d{2}\.\d{3}-\d{3}|\d{8})(?![\d\-/])")
+_CEP = re.compile(r"(?<![\w.\-/])(?:\d{5}-\d{3}|\d{2}\.\d{3}-\d{3}|\d{8})(?![\w\-/])")
 _TEL = re.compile(
     r"\+55[\s-]?\(?\d{2}\)?[\s-]?9?\d{4}[\s-]?\d{4}"  # +55 DD 9XXXX-XXXX
     r"|\(\d{2}\)\s?9?\d{4}[\s-]?\d{4}"  # (DD) 9XXXX-XXXX
-    r"|(?<![\d.\-/])\d{2}\s9?\d{4}-?\d{4}(?![\d\-/])"  # DD 9XXXX-XXXX
-    r"|(?<![\d.\-/])9?\d{4}-\d{4}(?![\d\-/])"  # 9XXXX-XXXX ou XXXX-XXXX (sem DDD)
-    r"|(?<![\d.\-/])\d{10,11}(?![\d.\-/])"  # 10/11 dígitos colados (CPF válido já saiu)
+    r"|(?<![\w.\-/])\d{2}\s9?\d{4}-?\d{4}(?![\w\-/])"  # DD 9XXXX-XXXX
+    r"|(?<![\w.\-/])9?\d{4}-\d{4}(?![\w\-/])"  # 9XXXX-XXXX ou XXXX-XXXX (sem DDD)
+    r"|(?<![\w.\-/])\d{10,11}(?![\w.\-/])"  # 10/11 dígitos colados (CPF válido já saiu)
 )
 _TOKEN = re.compile(r"<(?:EMAIL|CPF|PLACA|CEP|TEL)_\d+>")
 _NON_DIGIT = re.compile(r"\D")

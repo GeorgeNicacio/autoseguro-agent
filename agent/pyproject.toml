@@ -40,8 +40,9 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "contract: chama o quote-service real (pula se ele não estiver no ar)",
     "chaos: teste de caos com falha alta e QUOTE_SEED (make chaos)",
+    "golden: golden set contra a API estável (make golden)",
 ]
-addopts = "-m 'not chaos'"
+addopts = "-m 'not chaos and not golden'"
 
 [tool.ruff]
 line-length = 100

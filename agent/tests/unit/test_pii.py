@@ -92,3 +92,12 @@ def test_cep_log_prefix() -> None:
 def test_contains_pii_detects_raw_values() -> None:
     assert contains_pii("cpf 529.982.247-25")
     assert not contains_pii("tenho 35 anos e um carro 2022")
+
+
+@pytest.mark.parametrize(
+    "text", ["wa_4ea51968042fa9ab", "msg_1914851f350f", "qr_12345678901a", "id abc98765432100xyz"]
+)
+def test_ids_with_digit_runs_are_not_pii(masker: PiiMasker, text: str) -> None:
+    """Achado no smoke test do Docker: hash com 8 dígitos seguidos virava <CEP_1> no log."""
+    assert masker.mask(text, CONV).text == text
+    assert not contains_pii(text)

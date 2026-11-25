@@ -29,10 +29,29 @@ def _redact(value: Any) -> Any:
     return value
 
 
+# Ids de rastreio e metadados nunca são texto do lead: não passam pelo mascarador
+# (um hash hexadecimal pode ter 8 dígitos seguidos e parecer um CEP).
+TRUSTED_FIELDS = frozenset(
+    {
+        "conversation_id",
+        "message_id",
+        "quote_request_id",
+        "quote_attempt_id",
+        "handoff_id",
+        "event",
+        "status",
+        "level",
+        "timestamp",
+        "latency_ms",
+        "wa_message_id",
+    }
+)
+
+
 def redact_processor(
     _logger: Any, _method: str, event_dict: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
-    return {k: _redact(v) for k, v in event_dict.items()}
+    return {k: v if k in TRUSTED_FIELDS else _redact(v) for k, v in event_dict.items()}
 
 
 def configure_logging(level: int = logging.INFO) -> None:

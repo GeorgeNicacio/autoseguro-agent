@@ -10,6 +10,27 @@ services:
       QUOTE_SLOW_SECONDS: "8"
       # QUOTE_SEED: "42"   # descomente p/ falhas reproduziveis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      retries: 10
+
+  # Agente: webhook WhatsApp + linha do tempo em http://localhost:8080
+  # Sem chave roda com o FakeLLM; com chave: AGENT_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...
+  agent:
+    build: ./agent
+    ports:
+      - "8080:8080"
+    depends_on:
+      quote-api:
+        condition: service_healthy
+    environment:
+      AGENT_QUOTE_BASE_URL: http://quote-api:8000
+      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-fake}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - agent-data:/data
+    restart: unless-stopped
 
   # Instância só para o teste de caos (make chaos): 60% de falha, 20% lenta, seed fixa.
   # Fica num perfil separado para não subir no `docker compose up` normal.
@@ -23,3 +44,29 @@ services:
       QUOTE_SLOW_RATE: "0.20"
       QUOTE_SLOW_SECONDS: "8"
       QUOTE_SEED: "42"
+
+  # Instância estável para o golden set (make golden): sem falha simulada.
+  quote-api-stable:
+    build: ./quote-service
+    profiles: ["golden"]
+    ports:
+      - "8002:8000"
+    environment:
+      QUOTE_FAILURE_RATE: "0"
+      QUOTE_SLOW_RATE: "0"
+
+  # Instância da demo (make demo): instabilidade padrão com seed 4, que faz o 1º
+  # pedido de cotação ficar lento, o 2º falhar com 5xx e o 3º responder.
+  quote-api-demo:
+    build: ./quote-service
+    profiles: ["demo"]
+    ports:
+      - "8003:8000"
+    environment:
+      QUOTE_FAILURE_RATE: "0.20"
+      QUOTE_SLOW_RATE: "0.10"
+      QUOTE_SLOW_SECONDS: "8"
+      QUOTE_SEED: "4"
+
+volumes:
+  agent-data:

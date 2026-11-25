@@ -108,6 +108,7 @@ class Nodes:
             "turn_handoff": None,
             "turn_recommended": None,
             "early_sent": [],
+            "turn_llm_failed": False,
             "outbox": [],
         }
         if not s.get("status"):
@@ -141,8 +142,9 @@ class Nodes:
             result = self.d.llm.extract(req)
         except LLMUnavailableError as exc:
             self.emit(s, "llm.error", "failed", payload={"error": type(exc).__name__})
+            # 2 falhas seguidas do LLM viram handoff `stuck` (mesma regra de "empacou").
             return {
-                "outbox": [templates.llm_unavailable()],
+                "turn_llm_failed": True,
                 "low_confidence_streak": s.get("low_confidence_streak", 0) + 1,
             }
         return {"extraction": result.model_dump(mode="json")}
@@ -319,7 +321,9 @@ class Nodes:
             data_inicio=inicio,
         )
         ctx = TraceContext(conversation_id=s["conversation_id"], message_id=s["turn"]["message_id"])
+        t0 = self.d.clock.monotonic()
         outcome, early = await self._quote_with_wait_message(s, req, ctx)
+        total_ms = int((self.d.clock.monotonic() - t0) * 1000)  # inclui backoff entre tentativas
 
         payload = {"plano_id": p.plano_id, "data_inicio": inicio.isoformat()}
         self.emit(
@@ -339,7 +343,6 @@ class Nodes:
                 latency_ms=a.latency_ms,
                 payload={"attempt": a.attempt, "http_status": a.http_status},
             )
-        total_ms = sum(a.latency_ms for a in outcome.attempts)
         self.emit(
             s,
             "quote_request.finished",
@@ -434,6 +437,8 @@ class Nodes:
         if s.get("status") == "handed_off":
             return {"outbox": [templates.already_handed_off()]}
         out += self._prefix_messages(s)
+        if s.get("turn_llm_failed"):
+            return {"outbox": [*out, templates.llm_unavailable()]}
         intents = self.intents(s)
         ex = s.get("extraction") or {}
         rules = self.d.gateway.rules()

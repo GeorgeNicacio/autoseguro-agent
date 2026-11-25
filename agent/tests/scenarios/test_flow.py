@@ -193,3 +193,23 @@ async def test_fast_quote_has_no_waiting_message() -> None:
     agent, _, _, _ = make_agent(wait_after_s=1.0)
     r = await agent.handle("c18", "35 anos, Onix 2022, cep 01310-100, completo")
     assert "calculando" not in joined(r)
+
+
+class BrokenLLM:
+    def extract(self, req: object) -> object:
+        from autoseguro_agent.ports import LLMUnavailableError
+
+        raise LLMUnavailableError("sem crédito")
+
+
+async def test_llm_down_asks_to_repeat_then_hands_off() -> None:
+    """Provedor de LLM fora (ex.: sem crédito): mensagem curta, e na 2ª falha, humano."""
+    agent, gw, _, events = make_agent(llm=BrokenLLM())  # type: ignore[arg-type]
+    r1 = await agent.handle("c19", "Oi, quero cotar meu Onix 2022")
+    assert r1[0].startswith("Olá!")
+    assert r1[1] == "Tive um probleminha aqui. Pode repetir a sua última mensagem?"
+    assert len(r1) == 2
+    await agent.handle("c19", "Onix 2022")
+    rule = next(e for e in events.all if e.event_type == "handoff.opened").payload["rule_id"]
+    assert rule == "stuck"
+    assert gw.requests == []
