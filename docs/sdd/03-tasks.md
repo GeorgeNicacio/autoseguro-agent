@@ -38,11 +38,11 @@
 
 ## Dia 3 — Evidências, avaliação e README
 
-- [ ] T3.1 Golden set (10–15 cenários, ver lista abaixo) com FakeLLM; tabela passou/falhou no README. *(SMART M-05)*
-- [ ] T3.2 `make demo` com `QUOTE_SEED` que garanta ≥ 1 falha + retry visível → `docs/demo-conversation.md`. **REQ-62**
-- [ ] T3.3 README (esqueleto do plano) + `docs/DECISIONS.md` (ADRs curtos).
-- [ ] T3.4 `scripts/sanitize_ai_logs.py` + exportar sessões → `ai-logs/` + `ai-logs/README.md`. **REQ-53**
-- [ ] T3.5 Clone limpo → seguir só o README → `docker compose up` + `make demo`.
+- [x] T3.1 Golden set (10–15 cenários, ver lista abaixo) com FakeLLM; tabela passou/falhou no README. *(SMART M-05)*
+- [x] T3.2 `make demo` com `QUOTE_SEED` que garanta ≥ 1 falha + retry visível → `docs/demo-conversation.md`. **REQ-62**
+- [x] T3.3 README (esqueleto do plano) + `docs/DECISIONS.md` (ADRs curtos).
+- [x] T3.4 `scripts/sanitize_ai_logs.py` + exportar sessões → `ai-logs/` + `ai-logs/README.md`. **REQ-53**
+- [x] T3.5 Clone limpo → seguir só o README → `docker compose up` + `make demo` (validado em 2026-11-25 com os comandos do alvo, só Docker).
 - [ ] T3.6 Grep final: `sk-`, `key`, e-mail e telefone pessoais. Enviar link.
 
 ## Golden set (rascunho)
