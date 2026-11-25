@@ -14,8 +14,8 @@
 
 ## Dia 1 — Entender e caminho feliz
 
-- [ ] T1.1 `docker compose up --build`; `GET /health`; salvar `GET /planos` em `agent/src/autoseguro_agent/domain/plans_snapshot.json`.
-- [ ] T1.2 `scripts/characterize_quote.py`: 200 chamadas → taxa de 5xx, de lentidão, p50/p95. Número vai para o README. *(evidência SMART M-01)*
+- [x] T1.1 `docker compose up --build`; `GET /health`; salvar `GET /planos` em `agent/src/autoseguro_agent/domain/plans_snapshot.json`. *(snapshot idêntico ao `plans.json`)*
+- [x] T1.2 `scripts/characterize_quote.py`: 200 chamadas → taxa de 5xx, de lentidão, p50/p95. Número vai para o README. *(evidência SMART M-01)*
 - [ ] T1.3 `analysis/dataset_report.py` (polars): desfechos, objeções frequentes, PII por conversa, carros > 20 anos. Só agregados, nada cru.
 - [ ] T1.4 Scaffold `agent/` com uv, ruff, mypy, pytest, Makefile.
 - [ ] T1.5 `domain/models.py` + `rules.py` + `eligibility.py` — testes de fronteira, incluindo data default = 1º do mês seguinte com `Clock` fixo (25/11/2026 → 01/12/2026; 31/12 → 01/01 do ano seguinte). **REQ-01, 10, 11**

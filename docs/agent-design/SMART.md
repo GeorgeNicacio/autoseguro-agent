@@ -8,7 +8,7 @@
 
 | ID | Métrica (S) | Como medir (M) | Meta (A) | Por que importa (R) | Quando (T) | Resultado |
 |---|---|---|---|---|---|---|
-| M-01 | Taxa real de falha e lentidão do `/quote` | `scripts/characterize_quote.py`, 200 chamadas, config padrão | Só medir (esperado ~20% 5xx, ~10% lentas) | Justifica timeout, retry e breaker com dado, não com chute | Dia 1 | _a medir_ |
+| M-01 | Taxa real de falha e lentidão do `/quote` | `scripts/characterize_quote.py`, 200 chamadas, config padrão | Só medir (esperado ~20% 5xx, ~10% lentas) | Justifica timeout, retry e breaker com dado, não com chute | Dia 1 | **20,5% 5xx · 8,0% lentas · 71,5% ok na 1ª em < 3 s** (2026-11-25, [evidência](../evidence/quote_characterization.md)) |
 | M-02 | Conversas que travam no teste de caos | `tests/chaos`, 50 conversas, FAILURE 0.6 / SLOW 0.2 / SEED fixo; trava = turno > 15 s sem resposta | **0** | Critério "não trava" | Dia 2, todo `make chaos` | _a medir_ |
 | M-03 | Mensagens com R$ sem cotação `success` | `OutputValidator` + varredura do outbox no caos e no golden set | **0** | Critério "nunca inventa preço" | Dia 2, todo `make test` | _a medir_ |
 | M-04 | Falhas esgotadas que viram handoff | eventos `quote_request.failed` com `handoff.opened` correspondente / total | **100%** | Lead nunca fica sem resposta | Dia 2 | _a medir_ |

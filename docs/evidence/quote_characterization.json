@@ -1,0 +1,27 @@
+{
+  "measured_at": "2026-11-25T16:37:03+00:00",
+  "n": 200,
+  "concurrency": 10,
+  "client_timeout_s": 15.0,
+  "status_counts": {
+    "200": 159,
+    "500": 11,
+    "502": 14,
+    "503": 16
+  },
+  "failure_rate_5xx": 0.205,
+  "slow_rate": 0.08,
+  "success_rate_first_try_under_3s": 0.715,
+  "latency_all_s": {
+    "p50": 0.007,
+    "p95": 8.012,
+    "max": 8.032
+  },
+  "latency_fast_200_ms": {
+    "p50": 6.5,
+    "p95": 127.3,
+    "mean": 17.2
+  },
+  "slow_200_latency_s_min": 8.002,
+  "wall_time_s": 16.4
+}
