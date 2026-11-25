@@ -23,15 +23,15 @@
 - [x] T1.6 Teste de contrato com o exemplo do README (209,90 / 115,11). **REQ-13**
 - [x] T1.7 `pii.py` + Vault — testes por formato e colisão CPF×telefone (dígito verificador). Recall 100% no dataset ([evidência](../evidence/pii_recall.md)). **REQ-50, 51**
 - [x] T1.8 `ports.py`, `FakeLLM`, `templates.py`, `OutputValidator` (+ contratos de extração, cotação e eventos; `FixedClock`). **REQ-13**
-- [ ] T1.9 Grafo mínimo: ingest → mask → extract → route → ask/quote(sem retry) → present → validate_out. **REQ-01, 02**
-- [ ] T1.10 CLI de chat ponta a ponta com o LLM real. Commit + push.
+- [x] T1.9 Grafo mínimo: ingest → mask → extract → route → ask/quote(sem retry) → present → validate_out. **REQ-01, 02**
+- [x] T1.10 CLI de chat ponta a ponta (`--fake-llm`, `--events`, `--script`) contra a API real. *Pendente: rodar com o Claude real quando houver `ANTHROPIC_API_KEY` em `agent/.env`.*
 
 ## Dia 2 — Falhas, handoff e rastreio (onde está a nota)
 
 - [ ] T2.1 `CircuitBreaker` com `Clock` fake — testes de transição. **REQ-24**
 - [ ] T2.2 `HttpQuoteGateway`: timeout, retry+jitter, orçamento, mapeamento 200/422×2/400/5xx/lento — 1 teste respx por linha. **REQ-20..27**
 - [ ] T2.3 Mensagem de espera (> 4 s) e de falha honesta, por template. **REQ-23, 25**
-- [ ] T2.4 `decide_handoff` + tabela + 1 teste por regra + teste de prioridade; nó `handoff` com resumo. **REQ-30..32**
+- [x] T2.4 *(adiantada no Dia 1)* `decide_handoff` + tabela + 1 teste por regra + teste de prioridade; nó `handoff` com resumo. **REQ-30..32**
 - [ ] T2.5 `SqliteEventStore` append-only (triggers) + structlog com ids; `GET /conversations/{id}`. **REQ-40..42**
 - [ ] T2.6 Teste de caos (FAILURE 0.6, SLOW 0.2, SEED fixo, 50 conversas). **REQ-22, 25** *(SMART M-02..04)*
 - [ ] T2.7 Webhook FastAPI + dedup por `wa_message_id`. **REQ-43, 60** Commit + push.

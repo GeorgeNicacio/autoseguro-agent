@@ -88,8 +88,8 @@ def quote_message(result: QuoteResult, rules: PlanRules, *, offer_others: bool =
             f"({pr.dias_cobrados} dias); depois, mensalidade cheia"
         )
     if offer_others:
-        others = [p.nome for p in rules.plans if p.id != result.plano_id]
-        lines.append(f"Se quiser, também cotamos o {_join(others)}.")
+        others = [f"o {p.nome}" for p in rules.plans if p.id != result.plano_id]
+        lines.append(f"Se quiser, também cotamos {_join(others)}.")
     lines.append("Quer seguir com esse plano?")
     return "\n".join(lines)
 
@@ -124,6 +124,42 @@ def policy_refused(motivo: str) -> str:
         f"Infelizmente não consigo cotar automaticamente: {motivo} "
         "Vou te passar para um consultor, que pode avaliar o seu caso."
     )
+
+
+def greeting() -> str:
+    return (
+        "Olá! Sou o assistente virtual da AutoSeguro e vou te ajudar a cotar o seguro do seu carro."
+    )
+
+
+def ask_data_inicio_retry() -> str:
+    return (
+        "A data de início precisa ser hoje ou depois. Qual data você prefere? "
+        "Se não tiver preferência, uso o dia 1º do próximo mês."
+    )
+
+
+def recommended_plan(plan_name: str) -> str:
+    return f"Pelo seu perfil, recomendo começar pelo plano {plan_name}. Vou cotar pra você."
+
+
+def after_quote_prompt() -> str:
+    return "Quer seguir com esse plano, cotar outro plano ou mudar a data de início?"
+
+
+def ask_which_plan_to_compare() -> str:
+    return "Quer que eu cote qual deles: Essencial, Completo ou Premium?"
+
+
+def out_of_scope() -> str:
+    return (
+        "Esse assunto é tratado pelos nossos consultores. "
+        "Já te encaminhei e alguém continua com você por aqui."
+    )
+
+
+def already_handed_off() -> str:
+    return "Um consultor já está com o seu atendimento e te responde por aqui em instantes."
 
 
 def handoff_notice() -> str:
