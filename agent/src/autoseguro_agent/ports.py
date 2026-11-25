@@ -22,6 +22,7 @@ __all__ = [
     "LLMUnavailableError",
     "OutboundChannel",
     "QuoteGateway",
+    "TaskQueue",
     "Vault",
 ]
 
@@ -43,6 +44,13 @@ class EventStore(Protocol):
     def append(self, event: Event) -> None: ...
     def timeline(self, conversation_id: str) -> list[Event]: ...
     def seen_wa_message(self, wa_message_id: str) -> bool: ...
+    def all_events(self) -> list[Event]: ...
+
+
+class TaskQueue(Protocol):
+    """Fila de tarefas em segundo plano (RQ neste teste)."""
+
+    def schedule_quote_retry(self, conversation_id: str, attempt: int, delay_s: int) -> None: ...
 
 
 class OutboundChannel(Protocol):

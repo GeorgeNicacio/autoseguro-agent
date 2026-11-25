@@ -21,6 +21,12 @@ EventType = Literal[
     "handoff.opened",
     "output.blocked",
     "llm.error",
+    "llm.call",
+    "trace.span",
+    "turn.finished",
+    "quote_retry.scheduled",
+    "quote_retry.finished",
+    "handoff.updated",
 ]
 
 

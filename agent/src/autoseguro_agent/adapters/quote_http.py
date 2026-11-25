@@ -78,6 +78,7 @@ class HttpQuoteGateway:
         self._clock = clock or SystemClock()
         self._sleep = sleep
         self._rules = load_snapshot()
+        self.raw_planos: dict[str, Any] | None = None
         self.rules_source: Literal["api", "snapshot"] = "snapshot"
 
     @property
@@ -92,7 +93,8 @@ class HttpQuoteGateway:
         try:
             resp = await self._client.get("/planos", timeout=self._timeout_s)
             resp.raise_for_status()
-            self._rules = PlanRules.from_planos(resp.json())
+            self.raw_planos = resp.json()
+            self._rules = PlanRules.from_planos(self.raw_planos)
             self.rules_source = "api"
         except (httpx.HTTPError, KeyError, ValueError):
             self._rules = load_snapshot()

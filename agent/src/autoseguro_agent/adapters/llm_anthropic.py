@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import time
 from importlib.resources import files
 from typing import Any, Literal
 
@@ -20,6 +21,7 @@ from anthropic.types import OutputConfigParam
 
 from autoseguro_agent.domain.extraction import ExtractionRequest, ExtractionResult
 from autoseguro_agent.ports import LLMUnavailableError
+from autoseguro_agent.telemetry import LLMCallStats, cost_usd
 
 PROMPT_VERSION = "extract_v2"
 
@@ -53,14 +55,44 @@ class AnthropicLLM:
         self._model = model
         self._effort = effort
         self._system = load_prompt()
+        self.last_stats: LLMCallStats | None = None
+
+    def _stats(self, response: Any, latency_ms: int) -> LLMCallStats:
+        usage = getattr(response, "usage", None)
+
+        def n(field: str) -> int:
+            return int(getattr(usage, field, 0) or 0) if usage is not None else 0
+
+        tokens = (
+            n("input_tokens"),
+            n("output_tokens"),
+            n("cache_read_input_tokens"),
+            n("cache_creation_input_tokens"),
+        )
+        return LLMCallStats(
+            model=self._model,
+            prompt_version=PROMPT_VERSION,
+            latency_ms=latency_ms,
+            input_tokens=tokens[0],
+            output_tokens=tokens[1],
+            cache_read_tokens=tokens[2],
+            cache_write_tokens=tokens[3],
+            cost_usd=cost_usd(self._model, *tokens),
+        )
 
     def extract(self, req: ExtractionRequest) -> ExtractionResult:
         output_config: OutputConfigParam = {"effort": self._effort}
+        t0 = time.perf_counter()
         try:
             response = self._client.messages.parse(
                 model=self._model,
                 max_tokens=4096,
-                system=self._system,
+                # Prompt caching (REQ-76): system fixo marcado como cacheável. Se o prompt
+                # ficar abaixo do mínimo cacheável do modelo, a API só ignora a marcação;
+                # os tokens lidos do cache aparecem no evento llm.call.
+                system=[
+                    {"type": "text", "text": self._system, "cache_control": {"type": "ephemeral"}}
+                ],
                 messages=[{"role": "user", "content": render_user_message(req)}],
                 output_format=ExtractionResult,
                 output_config=output_config,
@@ -72,6 +104,7 @@ class AnthropicLLM:
         except anthropic.APIStatusError as exc:
             raise LLMUnavailableError(f"status {exc.status_code}") from exc
 
+        self.last_stats = self._stats(response, int((time.perf_counter() - t0) * 1000))
         if response.stop_reason == "refusal":
             raise LLMUnavailableError("recusa do modelo")
         parsed = response.parsed_output

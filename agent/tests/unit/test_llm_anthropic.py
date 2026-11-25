@@ -34,7 +34,25 @@ def client(messages: FakeMessages) -> Any:
 
 
 def ok_response(parsed: ExtractionResult | None, stop: str = "end_turn") -> Any:
-    return SimpleNamespace(parsed_output=parsed, stop_reason=stop)
+    usage = SimpleNamespace(
+        input_tokens=1200,
+        output_tokens=300,
+        cache_read_input_tokens=1000,
+        cache_creation_input_tokens=0,
+    )
+    return SimpleNamespace(parsed_output=parsed, stop_reason=stop, usage=usage)
+
+
+def test_usage_becomes_cost_stats() -> None:
+    """REQ-80: tokens e custo pela tabela de preços (opus 5.5: 4 / 20 / 0,20 por MTok)."""
+    msgs = FakeMessages(ok_response(ExtractionResult()))
+    llm = AnthropicLLM(client=client(msgs))
+    llm.extract(REQ)
+    stats = llm.last_stats
+    assert stats is not None
+    assert stats.input_tokens == 1200
+    assert stats.cache_read_tokens == 1000
+    assert stats.cost_usd == round((1200 * 4 + 300 * 20 + 1000 * 0.20) / 1_000_000, 6)
 
 
 def test_calls_parse_with_schema_effort_and_no_temperature() -> None:
@@ -47,7 +65,8 @@ def test_calls_parse_with_schema_effort_and_no_temperature() -> None:
     assert call["output_format"] is ExtractionResult
     assert call["output_config"] == {"effort": "low"}
     assert "temperature" not in call
-    assert call["system"] == load_prompt()
+    assert call["system"][0]["text"] == load_prompt()
+    assert call["system"][0]["cache_control"] == {"type": "ephemeral"}  # prompt caching
     assert "<CEP_1>" in call["messages"][0]["content"]
 
 

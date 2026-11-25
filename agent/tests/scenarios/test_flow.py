@@ -183,8 +183,9 @@ async def test_slow_quote_sends_waiting_message_first() -> None:
     """REQ-23: cotação demorou mais que o limite -> 'estou calculando' antes do resultado."""
     agent, _, _, events = make_agent(gateway=FakeGateway(delay_s=0.2), wait_after_s=0.05)
     r = await agent.handle("c17", "35 anos, Onix 2022, cep 01310-100, completo")
-    assert r[0] == "Estou calculando sua cotação, só um instante."
-    assert "R$ 209,90" in joined(r[1:])
+    assert r[0].startswith("Olá!")  # 1º turno: saudação antes da espera
+    assert r[1] == "Estou calculando sua cotação, só um instante."
+    assert "R$ 209,90" in joined(r[2:])
     waiting = [e for e in events.all if e.payload.get("kind") == "waiting"]
     assert len(waiting) == 1
 
@@ -279,3 +280,57 @@ async def test_plan_question_without_asking_recommendation_keeps_plan_pending() 
     assert gw.requests == []
     assert "Franquia por plano" in joined(r)
     assert agent.state("c22")["pending_slot"] == "plano_id"
+
+
+# --- Fila: retry da cotação depois do handoff por infraestrutura (REQ-91) ------------
+
+
+class RecordingTasks:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int, int]] = []
+
+    def schedule_quote_retry(self, conversation_id: str, attempt: int, delay_s: int) -> None:
+        self.calls.append((conversation_id, attempt, delay_s))
+
+
+async def test_infra_handoff_schedules_retry_and_recovers_quote() -> None:
+    agent, gw, _, events = make_agent(gateway=FakeGateway(script=["failed", "failed", "success"]))
+    tasks = RecordingTasks()
+    agent.deps.tasks = tasks
+    agent.deps.quote_retry_delays_s = (60, 300, 900)
+
+    r = await agent.handle("c30", "35 anos, Onix 2022, cep 01310-100, completo")
+    assert "eu mesmo te mando a cotação" in joined(r)
+    assert tasks.calls == [("c30", 1, 60)]
+
+    first = await agent.retry_quote("c30", 1)  # 2ª falha -> reagenda
+    assert first == {"status": "rescheduled", "next_attempt": 2}
+    assert tasks.calls[-1] == ("c30", 2, 300)
+
+    second = await agent.retry_quote("c30", 2)  # agora a API responde
+    assert second["status"] == "success"
+    assert "R$ 209,90" in joined(second["messages"])
+    assert gw.requests[-1].cep == "01310-100"  # CEP real do cofre, mesmo processo
+    state = await agent.astate("c30")
+    assert state["quote_recovered"] is True
+    assert state["status"] == "handed_off"  # o consultor continua com o atendimento
+    assert any(e.event_type == "handoff.updated" for e in events.all)
+
+    again = await agent.retry_quote("c30", 3)
+    assert again == {"status": "skipped"}
+
+
+async def test_retry_gives_up_after_last_delay() -> None:
+    agent, _, _, _ = make_agent(gateway=FakeGateway(script=["failed", "failed"]))
+    agent.deps.tasks = RecordingTasks()
+    agent.deps.quote_retry_delays_s = (1,)
+    await agent.handle("c31", "35 anos, Onix 2022, cep 01310-100, completo")
+    assert await agent.retry_quote("c31", 1) == {"status": "gave_up"}
+
+
+async def test_first_turn_slow_quote_greets_before_waiting() -> None:
+    agent, _, _, _ = make_agent(gateway=FakeGateway(delay_s=0.2), wait_after_s=0.05)
+    r = await agent.handle("c32", "35 anos, Onix 2022, cep 01310-100, completo")
+    assert r[0].startswith("Olá!")
+    assert r[1] == "Estou calculando sua cotação, só um instante."
+    assert sum(m.startswith("Olá!") for m in r) == 1

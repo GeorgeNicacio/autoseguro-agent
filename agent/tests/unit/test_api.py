@@ -1,5 +1,6 @@
 """Webhook no formato WhatsApp, deduplicação e linha do tempo (REQ-42, 43, 60)."""
 
+import json
 from typing import Any
 
 import pytest
@@ -75,3 +76,45 @@ def test_timeline_endpoint(client: TestClient) -> None:
 
 def test_unknown_conversation_is_404(client: TestClient) -> None:
     assert client.get("/conversations/nao-existe").status_code == 404
+
+
+# --- fase 4: dashboard, chat, golden e métricas -----------------------------------
+
+
+def test_dashboard_page(client: TestClient) -> None:
+    r = client.get("/dashboard")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
+def test_manual_chat_then_metrics_and_trace(client: TestClient) -> None:
+    first = client.post("/api/chat", json={"text": "Oi, tenho um Onix 2022"}).json()
+    conv = first["conversation_id"]
+    assert first["status"] == "finished"
+    assert any("idade" in m.lower() for m in first["messages"])
+    client.post(
+        "/api/chat", json={"conversation_id": conv, "text": "35 anos, cep 01310-100, completo"}
+    )
+    job = client.get(f"/api/jobs/{first['job_id']}").json()
+    assert job["status"] == "finished"
+
+    m = client.get("/api/metrics").json()
+    assert m["conversations"]["total"] == 1
+    assert m["quote"]["requests"] == {"success": 1}
+    assert m["llm"]["calls"] == 2
+    assert m["config"]["queue"] == "inline"
+
+    convs = client.get("/api/conversations").json()
+    assert convs[0]["status"] == "quoted"
+    detail = client.get(f"/api/conversations/{conv}").json()
+    assert len(detail["turns"]) == 2
+    assert detail["turns"][1]["spans"]
+    assert "01310-100" not in json.dumps(detail)
+
+
+def test_media_from_dashboard(client: TestClient) -> None:
+    first = client.post("/api/chat", json={"text": "Oi, tenho um Onix 2022"}).json()
+    r = client.post(
+        "/api/chat", json={"conversation_id": first["conversation_id"], "message_type": "audio"}
+    ).json()
+    assert "Não preciso desse arquivo" in r["messages"][0]

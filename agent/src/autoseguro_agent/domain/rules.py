@@ -6,8 +6,9 @@ sobre planos. Elas nunca são usadas para calcular preço: preço só vem do /qu
 
 from __future__ import annotations
 
+import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from importlib.resources import files
 from typing import Any
 
@@ -67,6 +68,12 @@ class PlanRules:
             carencia_dias=int(regras["carencia"]["dias"]),
             carencia_coberturas=tuple(regras["carencia"]["coberturas_com_carencia"]),
         )
+
+    @property
+    def version(self) -> str:
+        """Hash das regras: entra na chave do cache de cotação (mudou a regra, muda a chave)."""
+        raw = json.dumps(asdict(self), sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
     def plan(self, plan_id: str) -> Plan | None:
         return next((p for p in self.plans if p.id == plan_id), None)

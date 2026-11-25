@@ -32,6 +32,16 @@ class Settings(BaseSettings):
         default=None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "AGENT_ANTHROPIC_API_KEY")
     )
 
+    # --- fase 4: cache, fila e custos ---
+    redis_url: str | None = None  # sem Redis: cache desligado e fila executada na hora
+    golden_quote_url: str = "http://localhost:8002"
+    quote_cache_ttl_s: int = 3600
+    rules_cache_ttl_s: int = 600
+    llm_cache_ttl_s: int = 86_400
+    hot_threshold: int = 3  # hits a partir dos quais a chave vira "quente"
+    hot_ttl_s: int = 7 * 86_400  # TTL estendido das chaves quentes
+    quote_retry_delays_s: str = "60,300,900"  # retry da cotação depois do handoff
+
     db_path: str = "autoseguro.db"  # tabela events (append-only)
     checkpoint_db_path: str = "checkpoints.db"  # estado do LangGraph (mascarado)
 
@@ -39,3 +49,7 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_is_none(cls, v: object) -> object:
         return None if v in ("", None) else v
+
+    @property
+    def retry_delays(self) -> list[int]:
+        return [int(x) for x in self.quote_retry_delays_s.split(",") if x.strip()]

@@ -15,7 +15,21 @@ services:
       interval: 3s
       retries: 10
 
-  # Agente: webhook WhatsApp + linha do tempo em http://localhost:8080
+  # Redis: cache (cotação, regras, extração do LLM, consultas quentes) e fila (RQ).
+  # Um container resolve os dois papéis neste teste; em produção, ver README.
+  redis:
+    image: redis:7.4.1-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # API do agente: webhook WhatsApp, dashboard e métricas em http://localhost:8080
+  # Só enfileira e lê; quem roda o agente é o worker.
   # Sem chave roda com o FakeLLM; com chave: AGENT_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...
   agent:
     build: ./agent
@@ -24,10 +38,35 @@ services:
     depends_on:
       quote-api:
         condition: service_healthy
-    environment:
+      redis:
+        condition: service_healthy
+    env_file:  # opcional: agent/.env com ANTHROPIC_API_KEY (nunca versionado)
+      - path: ./agent/.env
+        required: false
+    environment: &agent-env
       AGENT_QUOTE_BASE_URL: http://quote-api:8000
+      AGENT_GOLDEN_QUOTE_URL: http://quote-api-stable:8000
+      AGENT_REDIS_URL: redis://redis:6379/0
       AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-fake}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AGENT_QUOTE_RETRY_DELAYS_S: ${AGENT_QUOTE_RETRY_DELAYS_S:-60,300,900}
+    volumes:
+      - agent-data:/data
+    restart: unless-stopped
+
+  # Worker RQ: único processo que roda o agente (ordem das mensagens, um escritor no
+  # SQLite, cofre de PII num processo só). SimpleWorker = sem fork por job.
+  worker:
+    build: ./agent
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "--with-scheduler", "-w", "rq.worker.SimpleWorker", "agent"]
+    depends_on:
+      quote-api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: ./agent/.env
+        required: false
+    environment: *agent-env
     volumes:
       - agent-data:/data
     restart: unless-stopped
@@ -45,10 +84,9 @@ services:
       QUOTE_SLOW_SECONDS: "8"
       QUOTE_SEED: "42"
 
-  # Instância estável para o golden set (make golden): sem falha simulada.
+  # Instância estável para o golden set (make golden e botão do dashboard): sem falha simulada.
   quote-api-stable:
     build: ./quote-service
-    profiles: ["golden"]
     ports:
       - "8002:8000"
     environment:

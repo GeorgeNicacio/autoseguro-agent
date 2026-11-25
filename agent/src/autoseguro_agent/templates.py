@@ -36,7 +36,7 @@ _ASK = {
 _ASK_RETRY = {
     "veiculo_ano": "Não consegui entender o ano do carro. Pode me dizer só o ano, tipo 2019?",
     "idade": "Não consegui entender a idade. Pode me dizer só o número, tipo 35?",
-    "cep": "Esse CEP não parece completo. Pode mandar os 8 números, tipo 01310-100?",
+    "cep": "Esse CEP não parece completo. Pode mandar os 8 números, com ou sem hífen?",
     "plano_id": "Qual desses você prefere: Essencial, Completo ou Premium?",
 }
 
@@ -117,6 +117,14 @@ def quote_unavailable() -> str:
         "O sistema de cotação está instável agora e não quero te passar um valor errado. "
         "Já encaminhei seus dados para um consultor, que vai te enviar a cotação por aqui."
     )
+
+
+def retry_promise() -> str:
+    return "Se o sistema voltar antes, eu mesmo te mando a cotação aqui."
+
+
+def quote_recovered() -> str:
+    return "Boa notícia: o sistema de cotação voltou e já consegui o seu valor."
 
 
 def policy_refused(motivo: str) -> str:

@@ -13,9 +13,13 @@ inventar preço.
 Com Docker (só isso é necessário):
 
 ```bash
-docker compose up --build -d   # quote-service + agente (webhook em http://localhost:8080)
+docker compose up --build -d   # quote-service, Redis, API do agente e worker
 make demo                      # conversa completa com timeout, 5xx e retry visíveis
 ```
+
+**Dashboard: http://localhost:8080/dashboard**: conversas, custos de token, latência por nó,
+cache, fila, consultas quentes, trace de cada turno, chat manual e um botão que roda o
+golden set (ver [Cache, filas e dashboard](#cache-filas-e-dashboard)).
 
 Sem `make`: os comandos de cada alvo estão no [`Makefile`](Makefile). Para conversar no terminal:
 
@@ -24,7 +28,8 @@ docker compose exec agent python -m autoseguro_agent.cli --fake-llm --events
 ```
 
 Por padrão o agente sobe com o `FakeLLM` (extrator determinístico, sem chave). Para usar o
-Claude: `AGENT_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=... docker compose up -d`.
+Claude, coloque `ANTHROPIC_API_KEY=...` em `agent/.env` (não versionado) e suba com
+`AGENT_LLM_PROVIDER=anthropic docker compose up -d`.
 
 Para desenvolver (precisa de [uv](https://docs.astral.sh/uv/)):
 
@@ -180,7 +185,7 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Golden set (FakeLLM) | **20 de 20** cenários | [golden](docs/evidence/golden_report.md) |
 | Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
-| Testes automatizados | 260 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
+| Testes automatizados | 293 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
 
 Golden set (resumo; tabela completa na evidência):
 
@@ -206,15 +211,87 @@ O que o caos ensinou: a primeira versão do breaker contava **tentativas**; os c
 passavam, mas só 10% das conversas eram cotadas, porque o circuito abria com a API apenas
 instável. Contando **pedidos** que falham depois dos retries, foram 52%, perto do teórico.
 
+## Cache, filas e dashboard
+
+Fase pedida depois da entrega base ([SDD 04](docs/sdd/04-cache-filas-dashboard.md),
+[ADR-015 e ADR-016](docs/DECISIONS.md)). Objetivo: menos custo e menos latência sem abrir
+mão de "preço só da API", processamento por fila e visibilidade da operação.
+
+```
+WhatsApp / dashboard --> API --enfileira--> Redis (fila "agent") --> worker RQ --> agente (LangGraph)
+                          |                   cache: cotação, regras, extração,         |
+                          |                   consultas quentes                         |
+                          +-- métricas, trace <-- SQLite (WAL) <------ eventos ---------+
+```
+
+**Estratégias de cache** (todas em Redis, todas como decorator nas portas: o grafo não sabe
+que o cache existe):
+
+| Cache | Chave | O que economiza | Por que é seguro |
+|---|---|---|---|
+| **Cotação** | plano, idade, ano, região do CEP (2 dígitos, como `/planos` define), data de início, **versão das regras** e **data do dia** | Pula o legado instável: sem timeout, sem retry, sem espera | `/quote` é cálculo puro; só resposta 200 entra; mudou regra ou dia, muda a chave; o CEP completo não vai para o Redis |
+| **Regras de `/planos`** | `rules:planos` com TTL de 10 min | Uma chamada por janela, compartilhada entre API e worker | Fallback para o snapshot versionado |
+| **Extração do LLM** | versão do prompt, modelo, texto **mascarado** normalizado, dado esperado, data | Tokens e ~1,8 s por mensagem repetida ("oi", "35", "completo", "quero um atendente") | Texto já mascarado: sem dado pessoal na chave nem no valor |
+| **Consultas quentes** | ranking (sorted set) por mensagem e por perfil de cotação | Chave com 3+ hits ganha TTL de 7 dias; o top 10 aparece no dashboard | Só contagem de texto mascarado |
+| **Prompt caching (Anthropic)** | system prompt fixo marcado como cacheável | Entrada do system prompt cobrada a preço de leitura de cache | Nada volátil no system (a data vai na mensagem) |
+
+Redis fora do ar não derruba o agente: o cache vira no-op e o evento registra `cache=error`.
+
+**Medido com o Claude real** (`claude-opus-5-5`, `effort: low`), pelo dashboard:
+
+| | Sem cache | Com cache |
+|---|---|---|
+| Extração (LLM) | ~1,8 s (p50 1.756 ms) e ~US$ 0,007 por chamada | ~1 ms e US$ 0 num hit do Redis |
+| System prompt | 3.307 tokens gravados no cache na 1ª chamada | 6.614 tokens lidos do cache nas 2 seguintes |
+| Conversa repetida | 3 chamadas, US$ 0,0222 | 3 hits, economia de US$ 0,0201 |
+| Cotação | 46 ms a ~10 s (retry e timeout no legado instável) | milissegundos, sem tocar no legado |
+
+**Filas (RQ sobre o mesmo Redis):**
+
+- O webhook **enfileira e responde na hora** (o WhatsApp reenvia se o 200 demora) e é
+  idempotente por `wa_message_id` (`SET NX` no Redis).
+- **Um worker roda o agente**: mensagens processadas em ordem, um único escritor no
+  checkpoint e o cofre de PII num processo só.
+- **Retry da cotação depois do handoff**: quando a API de cotação está fora, o agente avisa o
+  lead, passa para o consultor e agenda novas tentativas (1, 5 e 15 min). Validado em Docker
+  com a API parada e religada: o worker cotou, o lead recebeu o valor e o consultor foi
+  avisado pelo evento `handoff.updated`.
+- O **golden set** roda como job, disparado pelo botão do dashboard (20 de 20 pela fila).
+
+**Dashboard** (`/dashboard`, HTML estático + APIs `/api/*`): KPIs (conversas, cotadas, sucesso
+do `/quote`, custo do LLM e economia do cache, custo por conversa, hit rate dos caches,
+latência do turno, fila), chat manual (texto e mídia simulada, pela mesma fila do webhook),
+botão do golden set (FakeLLM ou Claude), lista de conversas e, para cada uma, a transcrição
+mascarada, a **cascata de spans por nó do grafo** em cada turno e todos os eventos com ids.
+
+### Por que Redis e RQ aqui, e o que seria em produção
+
+Este é um teste de escopo fechado. Um container de Redis resolve cache **e** fila com zero
+configuração, e RQ é uma fila mínima em cima dele: nada aqui justifica operar uma
+infraestrutura maior. Num projeto real, com volume e SLA, a escolha seria mais robusta:
+
+| Papel | Neste teste | Em produção |
+|---|---|---|
+| Fila de mensagens | RQ (lista no Redis), 1 worker | **SQS / Pub-Sub / Kafka** com partição por conversa (ordem), DLQ e reprocessamento |
+| Retry agendado da cotação | `enqueue_in` do RQ | **Temporal** (workflow durável com timers) ou fila com atraso + DLQ |
+| Cache | Redis único, sem persistência, LRU de 128 MB | **Redis gerenciado** (ElastiCache / Memorystore) em cluster, com métricas de evicção |
+| Estado e eventos | SQLite (WAL) num volume | **Postgres** (eventos particionados por data) |
+| Métricas e trace | agregados dos eventos na hora | **OpenTelemetry** + Prometheus/Grafana, e **Langfuse/LangSmith** para traces de LLM |
+| Cofre de PII | dicionário em memória do worker | tabela cifrada com KMS e acesso auditado |
+
 ## Limitações e o que eu faria com mais tempo
 
+- **Modo sombra** antes de cada mudança de prompt ou de modelo em produção: a versão nova roda
+  em paralelo nas conversas reais, sem responder ao lead; comparamos extrações, decisões de
+  handoff, custo e latência com a versão atual e só promovemos se não houver regressão.
+- Cache semântico (embeddings) para mensagens parecidas, e não só iguais, com limiar validado
+  no golden set.
 - O golden set com o Claude real tem 20 cenários; em produção eu ampliaria com conversas
   reais anonimizadas e rodaria a cada mudança de prompt ou de modelo.
 - Cofre de PII em memória: o checkpoint sobrevive a restart, o cofre não. Faria uma tabela
   cifrada com acesso restrito.
-- Retry assíncrono da cotação depois do handoff (fila), avisando o lead se der certo.
 - Breaker por taxa de falha numa janela de tempo, em vez de contagem consecutiva.
-- Postgres, fila para mensagens, webhook sem estado; canal real do WhatsApp com verificação.
+- Infraestrutura de produção da tabela acima; canal real do WhatsApp com verificação do webhook.
 - Presidio com reconhecedores BR; avaliação com LLM-as-judge; métricas de conversão por
   regra de handoff ([métricas de produto](docs/agent-design/SMART.md)).
 
@@ -230,12 +307,15 @@ sanitizadas, ferramentas usadas e os erros que peguei estão em [`ai-logs/`](ai-
 agent/                      # o agente (uv, ruff, mypy, pytest)
   src/autoseguro_agent/
     domain/                 # regras puras: modelos, elegibilidade, handoff, validador
-    adapters/               # quote_http (resiliência), llm_anthropic, llm_fake, sqlite, breaker
+    adapters/               # quote_http (resiliência), cache Redis, llm_anthropic, llm_fake, sqlite, breaker
     graph/                  # nós e montagem do LangGraph
     prompts/extract_v2.md   # prompt versionado (formato SPARK; v1 mantido para histórico)
     templates.py            # toda mensagem com número ou de falha
     pii.py                  # mascarador + cofre
-    api.py · cli.py         # webhook WhatsApp e chat no terminal
+    api.py · cli.py         # webhook WhatsApp, APIs do dashboard e chat no terminal
+    static/dashboard.html   # dashboard (HTML + fetch, sem build)
+    dispatch.py · jobs.py   # fila RQ: despachante e jobs do worker
+    metrics.py · telemetry.py  # métricas, custos de token e trace
     evaluation/             # caos, golden set e demo
   tests/                    # unit · contract · scenarios · chaos
 analysis/                   # análise agregada do dataset e recall do mascarador

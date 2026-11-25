@@ -12,6 +12,7 @@ RequestStatus = Literal["success", "refused", "invalid", "failed"]
 AttemptStatus = Literal["ok", "timeout", "http_5xx", "refused", "invalid", "circuit_open"]
 FailureReason = Literal["exhausted", "circuit_open", "budget_exceeded"]
 InvalidReason = Literal["bad_input", "agent_bug"]
+CacheStatus = Literal["hit", "miss", "error", "disabled"]
 
 
 class TraceContext(BaseModel):
@@ -43,3 +44,5 @@ class QuoteOutcome(BaseModel):
     refusal_motivo: str | None = None
     failure_reason: FailureReason | None = None
     invalid_reason: InvalidReason | None = None
+    cache: CacheStatus | None = None  # preenchido pelo CachedQuoteGateway
+    saved_ms: int | None = None  # latência da resposta original, economizada num hit

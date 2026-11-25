@@ -11,6 +11,7 @@ dado pessoal cru chega ao "modelo".
 from __future__ import annotations
 
 import re
+import time
 from collections import deque
 from collections.abc import Iterable
 
@@ -23,6 +24,7 @@ from autoseguro_agent.domain.extraction import (
     SlotStr,
 )
 from autoseguro_agent.domain.models import PlanId
+from autoseguro_agent.telemetry import LLMCallStats
 
 _INTENT_PATTERNS: tuple[tuple[Intent, str], ...] = (
     ("wants_human", r"atendente|humano|pessoa de verdade|falar com algu[eé]m|consultor"),
@@ -71,12 +73,19 @@ class FakeLLM:
     def __init__(self, script: Iterable[ExtractionResult] = ()) -> None:
         self._script: deque[ExtractionResult] = deque(script)
         self.requests: list[ExtractionRequest] = []
+        self.last_stats: LLMCallStats | None = None
 
     def extract(self, req: ExtractionRequest) -> ExtractionResult:
+        t0 = time.perf_counter()
         self.requests.append(req)
-        if self._script:
-            return self._script.popleft()
-        return self._heuristic(req)
+        result = self._script.popleft() if self._script else self._heuristic(req)
+        # Sem tokens nem custo: deixa o dashboard e os testes de métricas funcionarem offline.
+        self.last_stats = LLMCallStats(
+            model="fake",
+            prompt_version="heuristic",
+            latency_ms=int((time.perf_counter() - t0) * 1000),
+        )
+        return result
 
     @staticmethod
     def _heuristic(req: ExtractionRequest) -> ExtractionResult:

@@ -73,3 +73,14 @@ Formato: contexto → decisão → alternativa descartada → trade-off. Datas e
 - **Contexto:** o avaliador precisa rodar sem chave.
 - **Decisão:** `AGENT_LLM_PROVIDER=fake` por padrão no compose; com chave, uma variável troca para o Claude. Toda a suíte roda offline.
 - **Trade-off:** a demo padrão não exercita o LLM real; o que ela prova é o fluxo, a resiliência e o rastreio.
+
+## ADR-015 · Redis para cache e fila (RQ), sem infraestrutura mais robusta
+- **Contexto:** a fase 4 pediu redução de custo e latência, filas e um dashboard, num teste de escopo fechado.
+- **Decisão:** um container Redis para cache (cotação, regras, extração do LLM, consultas quentes) e para a fila (RQ). Caches como decorators nas portas; um worker `SimpleWorker` roda o agente; prompt caching da Anthropic no system prompt; métricas agregadas dos eventos.
+- **Alternativas:** Celery/Kafka/SQS, Temporal, Prometheus/OpenTelemetry, cache semântico.
+- **Trade-off:** simples e suficiente para o teste, mas sem partição por conversa, DLQ, alta disponibilidade nem séries temporais. A tabela "neste teste × em produção" está no README.
+
+## ADR-016 · O que entra (e o que não entra) na chave de cache
+- **Cotação:** campos do cálculo segundo `/planos` + versão das regras + data do dia; CEP só pelo prefixo de 2 dígitos (a regra publicada), o que também evita guardar o CEP completo. Só resposta 200 é cacheada.
+- **Extração:** texto mascarado normalizado + dado esperado + data + prompt + modelo. Os dados já coletados ficam fora de propósito: mais hits, e a extração da mensagem quase não depende deles.
+- **Golden set roda sem cache:** ele avalia o fluxo e o modelo de verdade; com cache, a 2ª rodada não testaria nada.

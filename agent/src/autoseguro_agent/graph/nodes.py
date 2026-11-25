@@ -59,11 +59,38 @@ class Deps:
     clock: Clock
     vault: Vault
     wait_message_after_s: float = 4.0
+    tasks: Any = None  # TaskQueue (fila): agenda retry da cotação após handoff de infra
+    quote_retry_delays_s: tuple[int, ...] = (60, 300, 900)
 
 
 class Nodes:
     def __init__(self, deps: Deps) -> None:
         self.d = deps
+
+    # ------------------------------------------------------------------ trace
+    def traced(self, name: str, fn: Any) -> Any:
+        """Envolve um nó: cada execução vira um span `trace.span` com a duração (REQ-81)."""
+        if asyncio.iscoroutinefunction(fn):
+
+            async def run_async(s: ConversationState) -> Update:
+                t0 = self.d.clock.monotonic()
+                out: Update = await fn(s)
+                self._span(s, name, t0)
+                return out
+
+            return run_async
+
+        def run(s: ConversationState) -> Update:
+            t0 = self.d.clock.monotonic()
+            out: Update = fn(s)
+            self._span(s, name, t0)
+            return out
+
+        return run
+
+    def _span(self, s: ConversationState, name: str, t0: float) -> None:
+        ms = int((self.d.clock.monotonic() - t0) * 1000)
+        self.emit(s, "trace.span", "ok", latency_ms=ms, payload={"node": name})
 
     # ------------------------------------------------------------------ util
     def emit(self, s: ConversationState, event_type: EventType, status: str, **kw: Any) -> None:
@@ -147,6 +174,11 @@ class Nodes:
                 "turn_llm_failed": True,
                 "low_confidence_streak": s.get("low_confidence_streak", 0) + 1,
             }
+        stats = getattr(self.d.llm, "last_stats", None)
+        if stats is not None:  # REQ-80: tokens, custo, latência e cache de cada chamada
+            self.emit(
+                s, "llm.call", stats.cache, latency_ms=stats.latency_ms, payload=stats.as_payload()
+            )
         return {"extraction": result.model_dump(mode="json")}
 
     # ---------------------------------------------------------------- apply
@@ -313,14 +345,14 @@ class Nodes:
         return s.get("quoted_key") != self._quote_key(p)
 
     # ---------------------------------------------------------------- quote
-    async def quote(self, s: ConversationState) -> Update:
+    def quote_request_for(self, s: ConversationState) -> tuple[QuoteRequest, bool]:
+        """Monta o pedido a partir do perfil; o CEP real sai do cofre só aqui."""
         p = self.profile(s)
         assert p.cep_token
         assert p.plano_id
         assert p.idade is not None
         assert p.veiculo_ano is not None
         cep = self.d.vault.resolve(s["conversation_id"], p.cep_token)
-        default_date = p.data_inicio is None
         inicio = p.data_inicio or default_start_date(self.today())
         req = QuoteRequest(
             plano_id=p.plano_id,
@@ -329,12 +361,22 @@ class Nodes:
             cep=cep or "",
             data_inicio=inicio,
         )
-        ctx = TraceContext(conversation_id=s["conversation_id"], message_id=s["turn"]["message_id"])
-        t0 = self.d.clock.monotonic()
-        outcome, early = await self._quote_with_wait_message(s, req, ctx)
-        total_ms = int((self.d.clock.monotonic() - t0) * 1000)  # inclui backoff entre tentativas
+        return req, p.data_inicio is None
 
-        payload = {"plano_id": p.plano_id, "data_inicio": inicio.isoformat()}
+    def record_quote(
+        self,
+        s: ConversationState,
+        req: QuoteRequest,
+        outcome: QuoteOutcome,
+        total_ms: int,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        """Eventos do pedido e de cada tentativa; devolve o resumo guardado no estado."""
+        payload = {
+            "plano_id": req.plano_id,
+            "data_inicio": req.data_inicio.isoformat() if req.data_inicio else None,
+            **extra,
+        }
         self.emit(
             s,
             "quote_request.started",
@@ -363,15 +405,27 @@ class Nodes:
                 "premio_mensal": str(outcome.result.premio_mensal) if outcome.result else None,
                 "failure_reason": outcome.failure_reason,
                 "invalid_reason": outcome.invalid_reason,
+                "cache": outcome.cache,
+                "saved_ms": outcome.saved_ms,
+                **extra,
             },
         )
-
-        summary = {
+        return {
             "quote_request_id": outcome.quote_request_id,
             "status": outcome.status,
-            "plano_id": p.plano_id,
+            "plano_id": req.plano_id,
+            "cache": outcome.cache,
             "attempts": [a.model_dump(mode="json") for a in outcome.attempts],
         }
+
+    async def quote(self, s: ConversationState) -> Update:
+        p = self.profile(s)
+        req, default_date = self.quote_request_for(s)
+        ctx = TraceContext(conversation_id=s["conversation_id"], message_id=s["turn"]["message_id"])
+        t0 = self.d.clock.monotonic()
+        outcome, early = await self._quote_with_wait_message(s, req, ctx)
+        total_ms = int((self.d.clock.monotonic() - t0) * 1000)  # inclui backoff entre tentativas
+        summary = self.record_quote(s, req, outcome, total_ms)
         update: Update = {
             "early_sent": early,
             "turn_quote": outcome.model_dump(mode="json", exclude={"result"}),
@@ -395,10 +449,19 @@ class Nodes:
         done, _ = await asyncio.wait({task}, timeout=self.d.wait_message_after_s)
         early: list[str] = []
         if not done:
-            text = templates.waiting()
-            self.d.outbound.send(s["conversation_id"], text)
-            self.emit(s, "message.sent", "sent", payload={"chars": len(text), "kind": "waiting"})
-            early.append(text)
+            # 1º turno: a saudação sai antes da espera (achado no teste em Docker).
+            texts = [] if s.get("greeted") else [templates.greeting()]
+            texts.append(templates.waiting())
+            for text in texts:
+                self.d.outbound.send(s["conversation_id"], text)
+                kind = "waiting" if text == templates.waiting() else "greeting"
+                self.emit(
+                    s,
+                    "message.sent",
+                    "sent",
+                    payload={"chars": len(text), "text": text, "kind": kind},
+                )
+                early.append(text)
         return await task, early
 
     def route_quote(self, s: ConversationState) -> Update:
@@ -432,9 +495,13 @@ class Nodes:
         return {"outbox": out}
 
     # -------------------------------------------------------------- respond
+    @staticmethod
+    def _greeted(s: ConversationState) -> bool:
+        return bool(s.get("greeted")) or templates.greeting() in s.get("early_sent", [])
+
     def _prefix_messages(self, s: ConversationState) -> list[str]:
         out: list[str] = []
-        if not s.get("greeted"):
+        if not self._greeted(s):
             out.append(templates.greeting())
         kinds = set(s["turn"]["pii_kinds"]) & PII_TO_NOTICE
         if kinds and not s.get("pii_notice_sent"):
@@ -493,17 +560,32 @@ class Nodes:
         }
         self.emit(s, "handoff.opened", "opened", handoff_id=handoff_id, payload=summary)
         self.emit(s, "conversation.status", "handed_off")
+        retry_scheduled = False
+        if decision["rule_id"] == "infra_unavailable" and self.d.tasks is not None:
+            # REQ-91: o legado pode voltar logo; a fila tenta de novo em segundo plano.
+            delay = self.d.quote_retry_delays_s[0] if self.d.quote_retry_delays_s else 60
+            self.d.tasks.schedule_quote_retry(s["conversation_id"], 1, delay)
+            self.emit(
+                s,
+                "quote_retry.scheduled",
+                "scheduled",
+                handoff_id=handoff_id,
+                payload={"attempt": 1, "delay_s": delay},
+            )
+            retry_scheduled = True
 
         rule = decision["rule_id"]
         out = list(s.get("outbox", []))
-        if not s.get("greeted"):
+        if not self._greeted(s):
             out.append(templates.greeting())
         message = {
             "infra_unavailable": templates.quote_unavailable,
             "ready_to_close": templates.ready_to_close,
             "out_of_scope": templates.out_of_scope,
         }.get(rule)
-        if rule == "out_of_policy":
+        if rule == "infra_unavailable" and retry_scheduled:
+            out.append(templates.quote_unavailable() + " " + templates.retry_promise())
+        elif rule == "out_of_policy":
             out.append(templates.policy_refused(decision["motivo"]))
         elif message is not None:
             out.append(message())
@@ -523,7 +605,8 @@ class Nodes:
                 self.emit(s, "output.blocked", "blocked", payload={"offending": check.offending})
                 text = templates.safe_fallback()
             self.d.outbound.send(s["conversation_id"], text)
-            self.emit(s, "message.sent", "sent", payload={"chars": len(text)})
+            # Texto do agente vai no evento (templates não ecoam dado pessoal do lead).
+            self.emit(s, "message.sent", "sent", payload={"chars": len(text), "text": text})
             sent.append(text)
         kinds = set(s["turn"]["pii_kinds"]) & PII_TO_NOTICE
         return {

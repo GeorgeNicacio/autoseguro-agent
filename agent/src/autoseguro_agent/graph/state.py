@@ -34,6 +34,7 @@ class ConversationState(TypedDict, total=False):
     quoted_key: str | None  # "plano|data" da última cotação success
     quotes: list[dict[str, Any]]  # resumo de cada pedido: ids, status, plano
     handoff: dict[str, Any] | None
+    quote_recovered: bool  # retry pós-handoff conseguiu a cotação
     # --- só do turno atual (zerado no ingest) ---
     turn: TurnInput
     extraction: dict[str, Any] | None

@@ -85,3 +85,6 @@ class LoggingEventStore:
 
     def seen_wa_message(self, wa_message_id: str) -> bool:
         return self._inner.seen_wa_message(wa_message_id)
+
+    def all_events(self) -> list[Event]:
+        return self._inner.all_events()

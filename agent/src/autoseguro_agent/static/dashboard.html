@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoSeguro · Operação</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #14181f; --muted: #5b6573; --line: #e3e6eb;
+  --accent: #1f6feb; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e; --chip: #eef1f5;
+  --lead: #eef4ff; --agent: #f3f5f7; --bar: #1f6feb; --bar2: #8fb4f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1116; --panel: #161b22; --ink: #e6edf3; --muted: #8b949e; --line: #2a313c;
+    --accent: #4c8dff; --ok: #3fb950; --warn: #d29922; --bad: #f85149; --chip: #21262d;
+    --lead: #132036; --agent: #1c2128; --bar: #4c8dff; --bar2: #2b4c80;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+h1 { font-size: 17px; margin: 0; }
+h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+main { padding: 16px 20px 40px; display: grid; gap: 16px; max-width: 1500px; margin: 0 auto; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted); }
+.chip b { color: var(--ink); font-weight: 600; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--muted); font-size: 12px; }
+.kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } main { padding: 12px 16px 32px; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+button, select, input[type=text] { font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+button { cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .55; cursor: wait; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chatlog { height: 330px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px; display: flex; flex-direction: column; gap: 8px; margin: 10px 0; background: var(--bg); }
+.msg { max-width: 88%; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-wrap: break-word; }
+.msg.lead { align-self: flex-end; background: var(--lead); }
+.msg.agent { align-self: flex-start; background: var(--agent); border: 1px solid var(--line); }
+.msg.sys { align-self: center; color: var(--muted); font-size: 12px; background: none; }
+.chatin { display: flex; gap: 8px; }
+.chatin input { flex: 1; min-width: 0; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: var(--chip); }
+.scroll { overflow-x: auto; }
+.st { font-weight: 600; }
+.st.quoted, .ok { color: var(--ok); } .st.handed_off { color: var(--warn); } .bad { color: var(--bad); }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 140px 1fr 60px; gap: 8px; align-items: center; font-size: 12px; }
+.bar .track { background: var(--chip); border-radius: 4px; height: 12px; position: relative; overflow: hidden; }
+.bar .fill { background: var(--bar); height: 100%; border-radius: 4px; }
+.bar .fill2 { background: var(--bar2); height: 100%; position: absolute; top: 0; left: 0; border-radius: 4px; }
+.bar .n { text-align: right; color: var(--muted); }
+.muted { color: var(--muted); }
+.detail { margin-top: 12px; display: none; }
+.turn { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 10px 0; }
+.turn .head { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.wf { display: grid; gap: 3px; margin-top: 8px; }
+.wf .r { display: grid; grid-template-columns: 110px 1fr 70px; gap: 8px; font-size: 12px; align-items: center; }
+.wf .t { background: var(--chip); height: 10px; border-radius: 3px; position: relative; }
+.wf .b { position: absolute; top: 0; height: 100%; background: var(--bar); border-radius: 3px; min-width: 2px; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 6px; }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AutoSeguro · Operação do agente</h1>
+  <div class="chips" id="config"></div>
+  <div class="row">
+    <label class="chip"><input type="checkbox" id="auto" checked> atualizar a cada 5 s</label>
+    <button id="refresh">Atualizar</button>
+  </div>
+</header>
+<main>
+  <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+
+  <section class="grid2">
+    <div class="panel">
+      <h2>Conversar manualmente</h2>
+      <div class="row">
+        <button id="newchat">Nova conversa</button>
+        <span class="chip mono" id="chatid">—</span>
+      </div>
+      <div class="chatlog" id="chatlog" aria-live="polite"></div>
+      <div class="chatin">
+        <input type="text" id="chattext" placeholder="Ex.: tenho 35 anos, um Onix 2022, cep 01310-100" autocomplete="off">
+        <button class="primary" id="send">Enviar</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span class="muted">Simular mídia:</span>
+        <button data-media="audio">Áudio</button>
+        <button data-media="image">Foto</button>
+        <button data-media="document">Documento</button>
+      </div>
+      <p class="note">Passa pela mesma fila e pelo mesmo agente do webhook do WhatsApp.</p>
+
+      <h2 style="margin-top:18px">Golden set</h2>
+      <div class="row">
+        <select id="goldenllm">
+          <option value="fake">FakeLLM (sem custo)</option>
+          <option value="anthropic">Claude (custo real)</option>
+        </select>
+        <button class="primary" id="rungolden">Rodar 20 cenários</button>
+        <span class="muted" id="goldenstatus"></span>
+      </div>
+      <div class="scroll" id="goldenres" style="margin-top:10px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Conversas</h2>
+      <div class="row" style="margin-bottom:8px">
+        <label class="chip"><input type="checkbox" id="hidegolden"> esconder golden set</label>
+      </div>
+      <div class="scroll" style="max-height:330px; overflow-y:auto">
+        <table>
+          <thead><tr><th>Conversa</th><th>Origem</th><th>Status</th><th>Regra de handoff</th><th>Turnos</th><th>Cotações</th><th>Tokens</th><th>Custo US$</th><th>Atualizada</th></tr></thead>
+          <tbody id="convs"></tbody>
+        </table>
+      </div>
+      <div class="detail" id="detail"></div>
+    </div>
+  </section>
+
+  <section class="grid3">
+    <div class="panel"><h2>Handoffs por regra</h2><div class="bars" id="handoffs"></div></div>
+    <div class="panel"><h2>Latência por nó do grafo (p50 · p95)</h2><div class="bars" id="nodes"></div></div>
+    <div class="panel"><h2>Cotação · /quote</h2><div id="quote"></div></div>
+    <div class="panel"><h2>LLM · tokens e custo</h2><div id="llm"></div></div>
+    <div class="panel"><h2>Consultas quentes</h2><div id="hot"></div></div>
+    <div class="panel"><h2>Fila e cache</h2><div id="queue"></div></div>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v; else if (k === "style") n.style.cssText = v; else n.setAttribute(k, v);
+  }
+  for (const k of kids) n.append(k instanceof Node ? k : document.createTextNode(k ?? ""));
+  return n;
+};
+const fmtUsd = (v) => (v ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const fmtPct = (v) => v == null ? "—" : (v * 100).toFixed(0) + "%";
+const fmtMs = (v) => v == null ? "—" : v >= 1000 ? (v / 1000).toFixed(1) + " s" : v + " ms";
+const fmtInt = (v) => (v ?? 0).toLocaleString("pt-BR");
+const sum = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(path + " " + r.status);
+  return r.json();
+}
+const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+// ---------------- métricas ----------------
+function kpi(label, value, sub) {
+  return el("div", { class: "kpi" }, el("div", { class: "l" }, label), el("div", { class: "v" }, value), el("div", { class: "s" }, sub || ""));
+}
+function bars(target, rows, max, fmt = fmtInt) {
+  target.replaceChildren();
+  if (!rows.length) { target.append(el("div", { class: "muted" }, "Sem dados ainda.")); return; }
+  for (const r of rows) {
+    const track = el("div", { class: "track" });
+    if (r.v2 != null) track.append(el("div", { class: "fill2", style: `width:${Math.max(1, 100 * r.v2 / max)}%` }));
+    track.append(el("div", { class: "fill", style: `width:${Math.max(1, 100 * r.v / max)}%; position:relative` }));
+    target.append(el("div", { class: "bar" }, el("span", {}, r.label), track, el("span", { class: "n" }, r.text ?? fmt(r.v))));
+  }
+}
+function kv(target, pairs) {
+  const t = el("table");
+  for (const [k, v] of pairs) t.append(el("tr", {}, el("td", { class: "muted" }, k), el("td", {}, v)));
+  target.replaceChildren(t);
+}
+async function loadMetrics() {
+  const m = await api("/api/metrics");
+  const c = m.config || {};
+  $("#config").replaceChildren(
+    el("span", { class: "chip" }, "LLM: ", el("b", {}, c.llm_mode === "anthropic" ? "Claude" : "FakeLLM")),
+    el("span", { class: "chip" }, "cache: ", el("b", {}, c.cache)),
+    el("span", { class: "chip" }, "fila: ", el("b", {}, c.queue)),
+  );
+  const conv = m.conversations, q = m.quote, l = m.llm;
+  const quoted = conv.by_status.quoted || 0, handed = conv.by_status.handed_off || 0;
+  $("#kpis").replaceChildren(
+    kpi("Conversas", fmtInt(conv.total), `ao vivo ${conv.by_source.live || 0} · golden ${conv.by_source.golden || 0}`),
+    kpi("Cotadas", fmtInt(quoted), `handoff ${handed}`),
+    kpi("Sucesso do /quote", fmtPct(q.success_rate), `${q.requests.success || 0} ok · ${q.requests.failed || 0} falhas`),
+    kpi("Custo do LLM", fmtUsd(l.cost_usd), `economia do cache ${fmtUsd(l.cost_saved_usd)}`),
+    kpi("Custo por conversa", fmtUsd(l.avg_cost_per_conversation_usd), `${fmtInt(l.tokens.input_tokens + l.tokens.output_tokens)} tokens`),
+    kpi("Cache do LLM", fmtPct(l.cache_hit_rate), `${l.cache.hit || 0} hits · ${l.cache.miss || 0} misses`),
+    kpi("Cache de cotação", fmtPct(q.cache_hit_rate), `${fmtMs(q.latency_saved_ms)} poupados`),
+    kpi("Latência do turno", fmtMs(m.turn_latency_ms.p50), `p95 ${fmtMs(m.turn_latency_ms.p95)}`),
+    kpi("Fila", fmtInt((m.queue.queued || 0) + (m.queue.started || 0)), `agendados ${m.queue.scheduled || 0} · falhas ${m.queue.failed || 0}`),
+  );
+  const hr = Object.entries(m.handoffs_by_rule).map(([k, v]) => ({ label: k, v }));
+  bars($("#handoffs"), hr, Math.max(1, ...hr.map((r) => r.v)));
+  const nodes = Object.entries(m.node_latency_ms).map(([k, v]) => ({ label: k, v: v.p50 || 0, v2: v.p95 || 0, text: `${fmtMs(v.p50)} · ${fmtMs(v.p95)}` }));
+  bars($("#nodes"), nodes, Math.max(1, ...nodes.map((r) => r.v2)));
+  kv($("#quote"), [
+    ["Pedidos", Object.entries(q.requests).map(([k, v]) => `${k} ${v}`).join(" · ") || "—"],
+    ["Tentativas", Object.entries(q.attempts).map(([k, v]) => `${k} ${v}`).join(" · ") || "—"],
+    ["Latência (sem cache)", `p50 ${fmtMs(q.latency_ms.p50)} · p95 ${fmtMs(q.latency_ms.p95)} · máx ${fmtMs(q.latency_ms.max)}`],
+    ["Cache", Object.entries(q.cache).map(([k, v]) => `${k} ${v}`).join(" · ") || "—"],
+  ]);
+  kv($("#llm"), [
+    ["Chamadas", `${l.calls} (${Object.entries(l.cache).map(([k, v]) => `${k} ${v}`).join(" · ")})`],
+    ["Modelos", Object.entries(l.models).map(([k, v]) => `${k} ${v}`).join(" · ") || "—"],
+    ["Tokens entrada · saída", `${fmtInt(l.tokens.input_tokens)} · ${fmtInt(l.tokens.output_tokens)}`],
+    ["Prompt cache lido · gravado", `${fmtInt(l.tokens.cache_read_tokens)} · ${fmtInt(l.tokens.cache_write_tokens)}`],
+    ["Custo total", fmtUsd(l.cost_usd)],
+    ["Economia pelo cache", fmtUsd(l.cost_saved_usd)],
+    ...Object.entries(l.latency_by_model_ms || {}).map(([k, v]) => [`Latência ${k} (sem cache)`, `p50 ${fmtMs(v.p50)} · p95 ${fmtMs(v.p95)} · n ${v.n}`]),
+  ]);
+  const hot = $("#hot"); hot.replaceChildren();
+  for (const [ns, title] of [["llm", "Mensagens (mascaradas)"], ["quote", "Perfis de cotação"]]) {
+    const rows = (m.hot_queries[ns] || []);
+    const t = el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, title), el("th", {}, "Hits"))));
+    const tb = el("tbody");
+    for (const r of rows) tb.append(el("tr", {}, el("td", { class: "mono" }, r.query), el("td", {}, String(r.hits))));
+    if (!rows.length) tb.append(el("tr", {}, el("td", { class: "muted", colspan: "2" }, "Sem hits ainda")));
+    t.append(tb); hot.append(t);
+  }
+  const cs = m.cache_server || {};
+  kv($("#queue"), [
+    ["Modo", m.queue.mode || "—"],
+    ["Na fila · executando", `${m.queue.queued ?? 0} · ${m.queue.started ?? 0}`],
+    ["Agendados (retry da cotação)", String(m.queue.scheduled ?? 0)],
+    ["Concluídos · falhos", `${m.queue.finished ?? 0} · ${m.queue.failed ?? 0}`],
+    ["Redis hits · misses", `${cs.keyspace_hits ?? "—"} · ${cs.keyspace_misses ?? "—"}`],
+    ["Memória do Redis", cs.used_memory_human || cs.error || "—"],
+  ]);
+}
+
+// ---------------- conversas ----------------
+let selected = null;
+async function loadConversations() {
+  const rows = await api("/api/conversations");
+  const hide = $("#hidegolden").checked;
+  const tb = $("#convs"); tb.replaceChildren();
+  for (const r of rows) {
+    if (hide && r.source === "golden") continue;
+    const tr = el("tr", { class: "click" },
+      el("td", { class: "mono" }, r.conversation_id), el("td", {}, r.source),
+      el("td", { class: "st " + r.status }, r.status), el("td", {}, r.handoff_rule || ""),
+      el("td", {}, String(r.turns)), el("td", {}, String(r.quotes)), el("td", {}, fmtInt(r.tokens)),
+      el("td", {}, fmtUsd(r.cost_usd)), el("td", { class: "muted" }, new Date(r.updated_at).toLocaleTimeString("pt-BR")));
+    tr.addEventListener("click", () => showDetail(r.conversation_id));
+    tb.append(tr);
+  }
+  if (!tb.children.length) tb.append(el("tr", {}, el("td", { class: "muted", colspan: "9" }, "Nenhuma conversa ainda. Use o chat ou rode o golden set.")));
+  if (selected) showDetail(selected, true);
+}
+async function showDetail(id, quiet) {
+  selected = id;
+  const d = await api("/api/conversations/" + encodeURIComponent(id));
+  const box = $("#detail"); box.style.display = "block";
+  if (quiet && box.dataset.id === id && box.dataset.turns === String(d.turns.length)) return;
+  box.dataset.id = id; box.dataset.turns = String(d.turns.length);
+  box.replaceChildren(
+    el("h2", {}, "Trace da conversa"),
+    el("div", { class: "chips" },
+      el("span", { class: "chip mono" }, id),
+      el("span", { class: "chip" }, "status ", el("b", {}, d.status || "—")),
+      el("span", { class: "chip" }, "custo ", el("b", {}, fmtUsd(d.summary.cost_usd))),
+      d.handoff ? el("span", { class: "chip" }, "handoff ", el("b", {}, d.handoff.rule_id)) : ""),
+  );
+  for (const t of d.turns) {
+    const turn = el("div", { class: "turn" },
+      el("div", { class: "head" }, el("span", { class: "mono" }, t.message_id), el("span", {}, "turno " + fmtMs(t.duration_ms))));
+    if (t.lead) turn.append(el("div", { class: "msg lead" }, t.lead));
+    for (const a of t.agent) turn.append(el("div", { class: "msg agent", style: "margin-top:6px" }, a));
+    if (t.spans.length) {
+      const total = Math.max(1, t.spans.reduce((s, x) => s + (x.ms || 0), 0));
+      const wf = el("div", { class: "wf" }); let off = 0;
+      for (const s of t.spans) {
+        const w = 100 * (s.ms || 0) / total, l = 100 * off / total; off += s.ms || 0;
+        wf.append(el("div", { class: "r" }, el("span", { class: "mono" }, s.node),
+          el("div", { class: "t" }, el("div", { class: "b", style: `left:${l}%; width:${w}%` })), el("span", { class: "muted" }, fmtMs(s.ms))));
+      }
+      turn.append(wf);
+    }
+    const ev = el("table");
+    ev.append(el("thead", {}, el("tr", {}, ...["evento", "status", "latência", "ids", "detalhe"].map((h) => el("th", {}, h)))));
+    const tb = el("tbody");
+    for (const e of t.events) {
+      if (e.event_type === "trace.span") continue;
+      const ids = [e.quote_request_id, e.quote_attempt_id, e.handoff_id].filter(Boolean).join(" ");
+      const p = { ...e.payload }; delete p.text;
+      tb.append(el("tr", {}, el("td", { class: "mono" }, e.event_type), el("td", {}, e.status),
+        el("td", {}, e.latency_ms != null ? fmtMs(e.latency_ms) : ""), el("td", { class: "mono" }, ids),
+        el("td", { class: "mono" }, Object.keys(p).length ? JSON.stringify(p).slice(0, 160) : "")));
+    }
+    ev.append(tb);
+    turn.append(el("details", {}, el("summary", {}, `${t.events.length} eventos`), el("div", { class: "scroll" }, ev)));
+    box.append(turn);
+  }
+}
+
+// ---------------- jobs (fila) ----------------
+async function waitJob(sub, onDone) {
+  if (sub.status === "finished") return onDone(sub);
+  for (let i = 0; i < 240; i++) {
+    await new Promise((r) => setTimeout(r, 700));
+    const j = await api("/api/jobs/" + sub.job_id);
+    if (j.status === "finished") return onDone({ ...sub, ...j, messages: (j.result || {}).messages || [] , result: j.result });
+    if (j.status === "failed") throw new Error(j.error || "job falhou");
+  }
+  throw new Error("tempo esgotado esperando o worker");
+}
+
+// ---------------- chat ----------------
+let conv = null;
+function addMsg(kind, text) { const n = el("div", { class: "msg " + kind }, text); $("#chatlog").append(n); $("#chatlog").scrollTop = 1e9; return n; }
+function newChat() { conv = null; $("#chatid").textContent = "nova conversa"; $("#chatlog").replaceChildren(); addMsg("sys", "Mande a primeira mensagem como se fosse o lead."); }
+async function send(text, type = "text") {
+  if (type === "text" && !text.trim()) return;
+  addMsg("lead", type === "text" ? text : `[${type}]`);
+  $("#send").disabled = true;
+  const wait = addMsg("sys", "processando na fila…");
+  try {
+    const sub = await post("/api/chat", { conversation_id: conv, text, message_type: type });
+    conv = sub.conversation_id; $("#chatid").textContent = conv;
+    await waitJob(sub, (done) => { wait.remove(); for (const m of done.messages) addMsg("agent", m); });
+    refresh();
+  } catch (e) { wait.textContent = "erro: " + e.message; }
+  finally { $("#send").disabled = false; }
+}
+$("#send").addEventListener("click", () => { const t = $("#chattext").value; $("#chattext").value = ""; send(t); });
+$("#chattext").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#send").click(); });
+document.querySelectorAll("[data-media]").forEach((b) => b.addEventListener("click", () => send("", b.dataset.media)));
+$("#newchat").addEventListener("click", newChat);
+
+// ---------------- golden ----------------
+function goldenTable(r) {
+  const t = el("table", {}, el("thead", {}, el("tr", {}, ...["#", "Cenário", "Esperado", "Obtido", ""].map((h) => el("th", {}, h)))));
+  const tb = el("tbody");
+  for (const x of r.results) {
+    const exp = [x.expected.status, x.expected.handoff, x.expected.premio && "R$ " + x.expected.premio].filter(Boolean).join(" · ");
+    const got = [x.got.status, x.got.handoff, x.got.premio && "R$ " + x.got.premio].filter(Boolean).join(" · ");
+    const tr = el("tr", { class: "click" }, el("td", {}, x.id), el("td", {}, x.title), el("td", {}, exp), el("td", {}, got),
+      el("td", { class: x.ok ? "ok" : "bad" }, x.ok ? "passou" : "falhou: " + x.problems.join("; ")));
+    tr.addEventListener("click", () => showDetail(x.conversation_id));
+    tb.append(tr);
+  }
+  t.append(tb);
+  $("#goldenres").replaceChildren(el("div", { class: r.passed === r.total ? "ok st" : "bad st" }, `${r.passed} de ${r.total} passaram · ${r.llm}`), t);
+}
+$("#rungolden").addEventListener("click", async () => {
+  const llm = $("#goldenllm").value;
+  if (llm === "anthropic" && !confirm("Rodar os 20 cenários com o Claude usa a API paga. Continuar?")) return;
+  $("#rungolden").disabled = true; $("#goldenstatus").textContent = "na fila…";
+  try {
+    const sub = await post("/api/golden", { llm });
+    $("#goldenstatus").textContent = "rodando (1 a 2 min)…";
+    await waitJob(sub, (done) => { goldenTable(done.result); $("#goldenstatus").textContent = ""; });
+    refresh();
+  } catch (e) { $("#goldenstatus").textContent = "erro: " + e.message; }
+  finally { $("#rungolden").disabled = false; }
+});
+
+// ---------------- ciclo ----------------
+async function refresh() { try { await Promise.all([loadMetrics(), loadConversations()]); } catch (e) { console.error(e); } }
+$("#refresh").addEventListener("click", refresh);
+$("#hidegolden").addEventListener("change", loadConversations);
+setInterval(() => { if ($("#auto").checked) refresh(); }, 5000);
+newChat(); refresh();
+api("/api/golden/last").then((r) => { if (r && r.results) goldenTable(r); }).catch(() => {});
+</script>
+</body>
+</html>

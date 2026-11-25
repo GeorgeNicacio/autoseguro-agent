@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from typing import Any
 
 from autoseguro_agent.domain.events import Event
 
@@ -43,9 +44,11 @@ COLUMNS = (
 
 class SqliteEventStore:
     def __init__(self, path: str) -> None:
-        self._con = sqlite3.connect(path, check_same_thread=False)
+        self._con = sqlite3.connect(path, check_same_thread=False, timeout=10)
         self._lock = threading.Lock()
         with self._lock:
+            # WAL: a API lê (métricas, dashboard) enquanto o worker escreve.
+            self._con.execute("PRAGMA journal_mode=WAL")
             self._con.executescript(SCHEMA)
 
     def append(self, event: Event) -> None:
@@ -71,6 +74,15 @@ class SqliteEventStore:
                 f"SELECT {COLUMNS} FROM events WHERE conversation_id = ? ORDER BY seq",
                 (conversation_id,),
             ).fetchall()
+        return self._to_events(rows)
+
+    def all_events(self) -> list[Event]:
+        with self._lock:
+            rows = self._con.execute(f"SELECT {COLUMNS} FROM events ORDER BY seq").fetchall()
+        return self._to_events(rows)
+
+    @staticmethod
+    def _to_events(rows: list[Any]) -> list[Event]:
         return [
             Event(
                 ts=r[0],

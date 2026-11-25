@@ -21,6 +21,9 @@ class InMemoryEventStore:
             for e in self._events
         )
 
+    def all_events(self) -> list[Event]:
+        return list(self._events)
+
     @property
     def all(self) -> list[Event]:
         return list(self._events)

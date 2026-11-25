@@ -67,6 +67,12 @@ sessão do Claude Code mostra o plano sendo lido, conferido contra o código e c
     2003" como compra e sem o ano, e "a franquia tá alta" como reclamação (que manda para
     humano). O prompt v2 ganhou definições e exemplos; três rodadas seguidas deram 60/60.
 
+12. **Fase 4 (cache, filas e dashboard), testada no navegador e em Docker.** Rodar o golden
+    set pelo botão do dashboard deu 19/20: o texto do agente passou a ir para os eventos e o
+    exemplo "tipo 01310-100" do template de correção era lido como CEP real. Trocado por
+    "8 números, com ou sem hífen" e coberto por teste. No mesmo teste, a mensagem de espera
+    saía antes da saudação no 1º turno; corrigido com teste.
+
 ## Sanitização
 
 `scripts/sanitize_ai_logs.py` remove chaves e tokens de API, e-mails, CPF, telefones, CEPs,

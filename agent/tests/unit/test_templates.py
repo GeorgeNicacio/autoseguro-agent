@@ -102,3 +102,12 @@ def test_confirm_start_date() -> None:
     from datetime import date
 
     assert "01/12/2026" in templates.confirm_start_date(date(2026, 12, 1))
+
+
+@pytest.mark.parametrize("slot", ["veiculo_ano", "idade", "cep", "plano_id"])
+def test_templates_never_look_like_pii(slot: str) -> None:
+    """O texto do agente vai para os eventos; um exemplo de CEP 'real' era lido como PII."""
+    from autoseguro_agent.pii import contains_pii
+
+    assert not contains_pii(templates.ask_slot(slot))  # type: ignore[arg-type]
+    assert not contains_pii(templates.ask_slot(slot, retry=True))  # type: ignore[arg-type]

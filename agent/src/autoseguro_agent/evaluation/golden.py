@@ -32,7 +32,7 @@ from autoseguro_agent.agent import Agent, MessageType
 from autoseguro_agent.bootstrap import OutboxChannel, make_llm
 from autoseguro_agent.graph.nodes import Deps
 from autoseguro_agent.pii import InMemoryVault, contains_pii
-from autoseguro_agent.ports import LLMClient
+from autoseguro_agent.ports import EventStore, LLMClient
 from autoseguro_agent.settings import Settings
 
 MEDIA: dict[str, MessageType] = {"[imagem]": "image", "[audio]": "audio", "[documento]": "document"}
@@ -241,6 +241,7 @@ class Result:
     ok: bool
     got: dict[str, Any]
     problems: list[str] = field(default_factory=list)
+    conversation_id: str = ""
 
 
 def _gateway(kind: str, url: str, clock: SystemClock) -> HttpQuoteGateway:
@@ -252,11 +253,18 @@ def _gateway(kind: str, url: str, clock: SystemClock) -> HttpQuoteGateway:
     return HttpQuoteGateway(url, client=client, breaker=CircuitBreaker(clock, 5, 30), clock=clock)
 
 
-async def run_scenario(sc: Scenario, url: str, llm: LLMClient) -> Result:
+async def run_scenario(
+    sc: Scenario,
+    url: str,
+    llm: LLMClient,
+    events: EventStore | None = None,
+    run_id: str | None = None,
+) -> Result:
+    """Sem cache de propósito: o golden set avalia o fluxo e o modelo de verdade."""
     clock = SystemClock()
     gw = _gateway(sc.gateway, url, clock)
     await gw.load_rules()
-    events = InMemoryEventStore()
+    events = events if events is not None else InMemoryEventStore()
     agent = Agent(
         Deps(
             llm=llm,
@@ -267,7 +275,7 @@ async def run_scenario(sc: Scenario, url: str, llm: LLMClient) -> Result:
             vault=InMemoryVault(),
         )
     )
-    conv = f"golden_{sc.id}"
+    conv = f"golden_{run_id}_{sc.id}" if run_id else f"golden_{sc.id}"
     replies: list[str] = []
     for text in sc.messages:
         mtype = MEDIA.get(text, "text")
@@ -296,11 +304,13 @@ async def run_scenario(sc: Scenario, url: str, llm: LLMClient) -> Result:
         problems.append("R$ sem cotação válida")
     if any(contains_pii(str(e.payload)) for e in events.timeline(conv)):
         problems.append("PII crua nos eventos")
-    return Result(sc, not problems, got, problems)
+    return Result(sc, not problems, got, problems, conv)
 
 
-async def run_golden(url: str, llm_factory: Any) -> list[Result]:
-    return [await run_scenario(sc, url, llm_factory()) for sc in SCENARIOS]
+async def run_golden(
+    url: str, llm_factory: Any, events: EventStore | None = None, run_id: str | None = None
+) -> list[Result]:
+    return [await run_scenario(sc, url, llm_factory(), events, run_id) for sc in SCENARIOS]
 
 
 def to_markdown(results: list[Result], llm_name: str) -> str:
