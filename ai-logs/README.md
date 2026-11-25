@@ -4,13 +4,16 @@
 
 | Ferramenta | Para quê |
 |---|---|
-| **Claude (claude.ai)** | Conversa de planejamento: leitura do desafio e do quote-service, escolha de stack, plano de 3 dias. Virou o PDF que guiou a execução. |
+| **Claude (claude.ai)** | Conversa de planejamento: leitura do desafio e do quote-service, escolha de stack, plano de 3 dias. Virou o PDF que guiou a execução (não versionado; ver abaixo). |
 | **Claude Code (app desktop, Claude Opus 5.5)** | Execução inteira: SDD antes do código, TDD por tarefa, análise do dataset, implementação, testes de contrato/caos/golden contra a API real em Docker, documentação e este sanitizador. |
 | **Claude (API, `claude-opus-5-5`)** | É o LLM do próprio agente (nó de extração), atrás de uma porta `LLMClient`. |
 
 Sessões do Claude Code exportadas e sanitizadas em [`claude-code/`](claude-code/) (o `.jsonl`
-cru, como a ferramenta salva). A conversa de planejamento no claude.ai está descrita acima;
-o export dela entra aqui como `claude-ai-planejamento.md` (ver pendências).
+cru, como a ferramenta salva). A conversa de planejamento no claude.ai e o PDF que saiu dela
+**não estão no repositório por decisão minha**: misturam contexto pessoal e profissional de
+fora do desafio. O conteúdo técnico do plano está refletido no SDD (`docs/sdd/`), e a
+sessão do Claude Code mostra o plano sendo lido, conferido contra o código e corrigido
+(itens 1 e 2 abaixo).
 
 ## Como orquestrei
 
@@ -72,4 +75,3 @@ py scripts/sanitize_ai_logs.py --check ai-logs
 ## Pendências antes de enviar
 
 - Reexportar a sessão do Claude Code no fim (ela continua crescendo) e rodar o sanitizador.
-- Exportar a conversa de planejamento do claude.ai para `claude-ai-planejamento.md`.
