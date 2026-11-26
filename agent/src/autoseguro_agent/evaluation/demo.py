@@ -57,6 +57,14 @@ def _detail(e: Event) -> str:
         return f"PII mascarada: {kinds}"
     if e.event_type == "message.sent" and p.get("kind") == "waiting":
         return "mensagem de espera"
+    if e.event_type == "llm.call":
+        return (
+            f"{p.get('model')} · {p.get('prompt_version')} · "
+            f"{p.get('input_tokens', 0)} in / {p.get('output_tokens', 0)} out / "
+            f"{p.get('cache_read_tokens', 0)} cache · US$ {p.get('cost_usd', 0):.6f}"
+        )
+    if e.event_type == "trace.span":
+        return f"nó {p.get('node')}"
     if e.event_type == "quote_request.started":
         return f"{p.get('plano_id')} · início {p.get('data_inicio')}"
     return ""

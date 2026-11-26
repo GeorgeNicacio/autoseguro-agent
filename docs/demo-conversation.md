@@ -1,6 +1,6 @@
 # Log de uma execução completa (entregável 4)
 
-Gerado por `python -m autoseguro_agent.evaluation.demo` em 25/11/2026 14:56 · LLM: claude-opus-5-5 · quote-service real com instabilidade padrão e `QUOTE_SEED=4` · regras de `/planos` vindas da api.
+Gerado por `python -m autoseguro_agent.evaluation.demo` em 26/11/2026 17:35 · LLM: claude-haiku-5-5 · quote-service real com instabilidade padrão e `QUOTE_SEED=4` · regras de `/planos` vindas da api.
 
 `conversation_id = demo_001`. As falas do lead aparecem como o agente as guarda e manda ao LLM: já mascaradas (o lead digitou um CPF e um CEP fictícios).
 
@@ -55,7 +55,7 @@ Quer seguir com esse plano?
 ## Estado final
 
 - Status da conversa: `handed_off`
-- Handoff: `ready_to_close` (`ho_msg_a09950ef98ea`)
+- Handoff: `ready_to_close` (`ho_msg_b867b012d0e7`)
 - Perfil guardado (mascarado): `{'idade': 35, 'veiculo_ano': 2022, 'veiculo_modelo': 'Onix', 'cep_token': '<CEP_1>', 'plano_id': 'premium', 'data_inicio': None}`
 
 ## Linha do tempo de eventos
@@ -64,47 +64,107 @@ Mesma linha do tempo que `GET /conversations/{id}` devolve e que vai para o log 
 
 | # | Evento | Status | Latência | message_id | quote_request_id | quote_attempt_id | Detalhe |
 |---|---|---|---|---|---|---|---|
-| 1 | `message.received` | received |  | msg_354adee44cc6 |  |  | PII mascarada: nenhum |
-| 2 | `message.sent` | sent |  | msg_354adee44cc6 |  |  |  |
-| 3 | `message.sent` | sent |  | msg_354adee44cc6 |  |  |  |
-| 4 | `message.received` | processed |  | msg_354adee44cc6 |  |  |  |
-| 5 | `message.received` | received |  | msg_305fd8cb452a |  |  | PII mascarada: nenhum |
-| 6 | `slot.updated` | ok |  | msg_305fd8cb452a |  |  | veiculo_ano = 2022 |
-| 7 | `slot.updated` | ok |  | msg_305fd8cb452a |  |  | veiculo_modelo = Onix |
-| 8 | `message.sent` | sent |  | msg_305fd8cb452a |  |  |  |
-| 9 | `message.received` | processed |  | msg_305fd8cb452a |  |  |  |
-| 10 | `message.received` | received |  | msg_f8a210a57224 |  |  | PII mascarada: nenhum |
-| 11 | `slot.updated` | ok |  | msg_f8a210a57224 |  |  | idade = 35 |
-| 12 | `message.sent` | sent |  | msg_f8a210a57224 |  |  |  |
-| 13 | `message.received` | processed |  | msg_f8a210a57224 |  |  |  |
-| 14 | `message.received` | received |  | msg_a1bb87dca3d0 |  |  | PII mascarada: CPF, CEP |
-| 15 | `slot.updated` | ok |  | msg_a1bb87dca3d0 |  |  | cep_token = 01310-*** |
-| 16 | `message.sent` | sent |  | msg_a1bb87dca3d0 |  |  |  |
-| 17 | `message.sent` | sent |  | msg_a1bb87dca3d0 |  |  |  |
-| 18 | `message.received` | processed |  | msg_a1bb87dca3d0 |  |  |  |
-| 19 | `message.received` | received |  | msg_0841eafe0e8c |  |  | PII mascarada: nenhum |
-| 20 | `slot.updated` | ok |  | msg_0841eafe0e8c |  |  | plano_id = completo |
-| 21 | `message.sent` | sent |  | msg_0841eafe0e8c |  |  | mensagem de espera |
-| 22 | `quote_request.started` | pending |  | msg_0841eafe0e8c | qr_efade1dc84d2 |  | completo · início 2026-12-01 |
-| 23 | `quote_attempt` | timeout | 3007 ms | msg_0841eafe0e8c | qr_efade1dc84d2 | qa_e5f332e9a5f3 | tentativa 1 · http — |
-| 24 | `quote_attempt` | http_5xx | 4 ms | msg_0841eafe0e8c | qr_efade1dc84d2 | qa_3b42cb6bf540 | tentativa 2 · http 502 |
-| 25 | `quote_attempt` | ok | 46 ms | msg_0841eafe0e8c | qr_efade1dc84d2 | qa_9fcd315c1ff4 | tentativa 3 · http 200 |
-| 26 | `quote_request.finished` | success | 4834 ms | msg_0841eafe0e8c | qr_efade1dc84d2 |  | 3 tentativa(s) 209.90 |
-| 27 | `conversation.status` | quoted |  | msg_0841eafe0e8c |  |  |  |
-| 28 | `message.sent` | sent |  | msg_0841eafe0e8c |  |  |  |
-| 29 | `message.sent` | sent |  | msg_0841eafe0e8c |  |  |  |
-| 30 | `message.received` | processed |  | msg_0841eafe0e8c |  |  |  |
-| 31 | `message.received` | received |  | msg_dd1cb38f6490 |  |  | PII mascarada: nenhum |
-| 32 | `slot.updated` | ok |  | msg_dd1cb38f6490 |  |  | plano_id = premium |
-| 33 | `quote_request.started` | pending |  | msg_dd1cb38f6490 | qr_e28fb9908779 |  | premium · início 2026-12-01 |
-| 34 | `quote_attempt` | http_5xx | 42 ms | msg_dd1cb38f6490 | qr_e28fb9908779 | qa_6aed4ee1a0dc | tentativa 1 · http 500 |
-| 35 | `quote_attempt` | ok | 42 ms | msg_dd1cb38f6490 | qr_e28fb9908779 | qa_64bd86fb1a0e | tentativa 2 · http 200 |
-| 36 | `quote_request.finished` | success | 610 ms | msg_dd1cb38f6490 | qr_e28fb9908779 |  | 2 tentativa(s) 339.90 |
-| 37 | `conversation.status` | quoted |  | msg_dd1cb38f6490 |  |  |  |
-| 38 | `message.sent` | sent |  | msg_dd1cb38f6490 |  |  |  |
-| 39 | `message.received` | processed |  | msg_dd1cb38f6490 |  |  |  |
-| 40 | `message.received` | received |  | msg_a09950ef98ea |  |  | PII mascarada: nenhum |
-| 41 | `handoff.opened` | opened |  | msg_a09950ef98ea |  |  | regra ready_to_close · prioridade fim_feliz |
-| 42 | `conversation.status` | handed_off |  | msg_a09950ef98ea |  |  |  |
-| 43 | `message.sent` | sent |  | msg_a09950ef98ea |  |  |  |
-| 44 | `message.received` | processed |  | msg_a09950ef98ea |  |  |  |
+| 1 | `message.received` | received |  | msg_44d0e42d39ee |  |  | PII mascarada: nenhum |
+| 2 | `trace.span` | ok | 0 ms | msg_44d0e42d39ee |  |  | nó ingest |
+| 3 | `llm.call` | none | 1635 ms | msg_44d0e42d39ee |  |  | claude-haiku-5-5 · extract_v3 · 143 in / 24 out / 3558 cache · US$ 0.000062 |
+| 4 | `trace.span` | ok | 1635 ms | msg_44d0e42d39ee |  |  | nó extract |
+| 5 | `trace.span` | ok | 0 ms | msg_44d0e42d39ee |  |  | nó apply |
+| 6 | `trace.span` | ok | 0 ms | msg_44d0e42d39ee |  |  | nó route |
+| 7 | `trace.span` | ok | 0 ms | msg_44d0e42d39ee |  |  | nó respond |
+| 8 | `message.sent` | sent |  | msg_44d0e42d39ee |  |  |  |
+| 9 | `message.sent` | sent |  | msg_44d0e42d39ee |  |  |  |
+| 10 | `trace.span` | ok | 0 ms | msg_44d0e42d39ee |  |  | nó deliver |
+| 11 | `message.received` | processed |  | msg_44d0e42d39ee |  |  |  |
+| 12 | `turn.finished` | active | 1642 ms | msg_44d0e42d39ee |  |  |  |
+| 13 | `message.received` | received |  | msg_f4e4caf9ec0d |  |  | PII mascarada: nenhum |
+| 14 | `trace.span` | ok | 0 ms | msg_f4e4caf9ec0d |  |  | nó ingest |
+| 15 | `llm.call` | none | 756 ms | msg_f4e4caf9ec0d |  |  | claude-haiku-5-5 · extract_v3 · 136 in / 62 out / 3558 cache · US$ 0.000080 |
+| 16 | `trace.span` | ok | 756 ms | msg_f4e4caf9ec0d |  |  | nó extract |
+| 17 | `slot.updated` | ok |  | msg_f4e4caf9ec0d |  |  | veiculo_ano = 2022 |
+| 18 | `slot.updated` | ok |  | msg_f4e4caf9ec0d |  |  | veiculo_modelo = Onix |
+| 19 | `trace.span` | ok | 0 ms | msg_f4e4caf9ec0d |  |  | nó apply |
+| 20 | `trace.span` | ok | 0 ms | msg_f4e4caf9ec0d |  |  | nó route |
+| 21 | `trace.span` | ok | 0 ms | msg_f4e4caf9ec0d |  |  | nó respond |
+| 22 | `message.sent` | sent |  | msg_f4e4caf9ec0d |  |  |  |
+| 23 | `trace.span` | ok | 0 ms | msg_f4e4caf9ec0d |  |  | nó deliver |
+| 24 | `message.received` | processed |  | msg_f4e4caf9ec0d |  |  |  |
+| 25 | `turn.finished` | active | 761 ms | msg_f4e4caf9ec0d |  |  |  |
+| 26 | `message.received` | received |  | msg_852b7817830d |  |  | PII mascarada: nenhum |
+| 27 | `trace.span` | ok | 0 ms | msg_852b7817830d |  |  | nó ingest |
+| 28 | `llm.call` | none | 759 ms | msg_852b7817830d |  |  | claude-haiku-5-5 · extract_v3 · 155 in / 87 out / 3558 cache · US$ 0.000095 |
+| 29 | `trace.span` | ok | 759 ms | msg_852b7817830d |  |  | nó extract |
+| 30 | `slot.updated` | ok |  | msg_852b7817830d |  |  | idade = 35 |
+| 31 | `trace.span` | ok | 0 ms | msg_852b7817830d |  |  | nó apply |
+| 32 | `trace.span` | ok | 0 ms | msg_852b7817830d |  |  | nó route |
+| 33 | `trace.span` | ok | 0 ms | msg_852b7817830d |  |  | nó respond |
+| 34 | `message.sent` | sent |  | msg_852b7817830d |  |  |  |
+| 35 | `trace.span` | ok | 0 ms | msg_852b7817830d |  |  | nó deliver |
+| 36 | `message.received` | processed |  | msg_852b7817830d |  |  |  |
+| 37 | `turn.finished` | active | 764 ms | msg_852b7817830d |  |  |  |
+| 38 | `message.received` | received |  | msg_96cf5cc3ea6b |  |  | PII mascarada: CPF, CEP |
+| 39 | `trace.span` | ok | 0 ms | msg_96cf5cc3ea6b |  |  | nó ingest |
+| 40 | `llm.call` | none | 706 ms | msg_96cf5cc3ea6b |  |  | claude-haiku-5-5 · extract_v3 · 182 in / 37 out / 3558 cache · US$ 0.000072 |
+| 41 | `trace.span` | ok | 706 ms | msg_96cf5cc3ea6b |  |  | nó extract |
+| 42 | `slot.updated` | ok |  | msg_96cf5cc3ea6b |  |  | cep_token = 01310-*** |
+| 43 | `trace.span` | ok | 0 ms | msg_96cf5cc3ea6b |  |  | nó apply |
+| 44 | `trace.span` | ok | 0 ms | msg_96cf5cc3ea6b |  |  | nó route |
+| 45 | `trace.span` | ok | 0 ms | msg_96cf5cc3ea6b |  |  | nó respond |
+| 46 | `message.sent` | sent |  | msg_96cf5cc3ea6b |  |  |  |
+| 47 | `message.sent` | sent |  | msg_96cf5cc3ea6b |  |  |  |
+| 48 | `trace.span` | ok | 0 ms | msg_96cf5cc3ea6b |  |  | nó deliver |
+| 49 | `message.received` | processed |  | msg_96cf5cc3ea6b |  |  |  |
+| 50 | `turn.finished` | active | 711 ms | msg_96cf5cc3ea6b |  |  |  |
+| 51 | `message.received` | received |  | msg_22c143556cdf |  |  | PII mascarada: nenhum |
+| 52 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó ingest |
+| 53 | `llm.call` | none | 732 ms | msg_22c143556cdf |  |  | claude-haiku-5-5 · extract_v3 · 180 in / 29 out / 3558 cache · US$ 0.000068 |
+| 54 | `trace.span` | ok | 732 ms | msg_22c143556cdf |  |  | nó extract |
+| 55 | `slot.updated` | ok |  | msg_22c143556cdf |  |  | plano_id = completo |
+| 56 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó apply |
+| 57 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó route |
+| 58 | `message.sent` | sent |  | msg_22c143556cdf |  |  | mensagem de espera |
+| 59 | `quote_request.started` | pending |  | msg_22c143556cdf | qr_8bcca2c4e84c |  | completo · início 2026-12-01 |
+| 60 | `quote_attempt` | timeout | 3003 ms | msg_22c143556cdf | qr_8bcca2c4e84c | qa_690d295905b7 | tentativa 1 · http — |
+| 61 | `quote_attempt` | http_5xx | 2 ms | msg_22c143556cdf | qr_8bcca2c4e84c | qa_5fa3c0538f05 | tentativa 2 · http 502 |
+| 62 | `quote_attempt` | ok | 1 ms | msg_22c143556cdf | qr_8bcca2c4e84c | qa_9759c6693735 | tentativa 3 · http 200 |
+| 63 | `quote_request.finished` | success | 4708 ms | msg_22c143556cdf | qr_8bcca2c4e84c |  | 3 tentativa(s) 209.90 |
+| 64 | `conversation.status` | quoted |  | msg_22c143556cdf |  |  |  |
+| 65 | `trace.span` | ok | 4708 ms | msg_22c143556cdf |  |  | nó quote |
+| 66 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó route_quote |
+| 67 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó present |
+| 68 | `message.sent` | sent |  | msg_22c143556cdf |  |  |  |
+| 69 | `message.sent` | sent |  | msg_22c143556cdf |  |  |  |
+| 70 | `trace.span` | ok | 0 ms | msg_22c143556cdf |  |  | nó deliver |
+| 71 | `message.received` | processed |  | msg_22c143556cdf |  |  |  |
+| 72 | `turn.finished` | quoted | 5447 ms | msg_22c143556cdf |  |  |  |
+| 73 | `message.received` | received |  | msg_9328429a042b |  |  | PII mascarada: nenhum |
+| 74 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó ingest |
+| 75 | `llm.call` | none | 1462 ms | msg_9328429a042b |  |  | claude-haiku-5-5 · extract_v3 · 208 in / 36 out / 3558 cache · US$ 0.000074 |
+| 76 | `trace.span` | ok | 1462 ms | msg_9328429a042b |  |  | nó extract |
+| 77 | `slot.updated` | ok |  | msg_9328429a042b |  |  | plano_id = premium |
+| 78 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó apply |
+| 79 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó route |
+| 80 | `quote_request.started` | pending |  | msg_9328429a042b | qr_309935b01a40 |  | premium · início 2026-12-01 |
+| 81 | `quote_attempt` | http_5xx | 1 ms | msg_9328429a042b | qr_309935b01a40 | qa_a8b2a7c058f1 | tentativa 1 · http 500 |
+| 82 | `quote_attempt` | ok | 1 ms | msg_9328429a042b | qr_309935b01a40 | qa_7851abb19511 | tentativa 2 · http 200 |
+| 83 | `quote_request.finished` | success | 604 ms | msg_9328429a042b | qr_309935b01a40 |  | 2 tentativa(s) 339.90 |
+| 84 | `conversation.status` | quoted |  | msg_9328429a042b |  |  |  |
+| 85 | `trace.span` | ok | 604 ms | msg_9328429a042b |  |  | nó quote |
+| 86 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó route_quote |
+| 87 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó present |
+| 88 | `message.sent` | sent |  | msg_9328429a042b |  |  |  |
+| 89 | `trace.span` | ok | 0 ms | msg_9328429a042b |  |  | nó deliver |
+| 90 | `message.received` | processed |  | msg_9328429a042b |  |  |  |
+| 91 | `turn.finished` | quoted | 2073 ms | msg_9328429a042b |  |  |  |
+| 92 | `message.received` | received |  | msg_b867b012d0e7 |  |  | PII mascarada: nenhum |
+| 93 | `trace.span` | ok | 0 ms | msg_b867b012d0e7 |  |  | nó ingest |
+| 94 | `llm.call` | none | 1658 ms | msg_b867b012d0e7 |  |  | claude-haiku-5-5 · extract_v3 · 212 in / 89 out / 3558 cache · US$ 0.000101 |
+| 95 | `trace.span` | ok | 1658 ms | msg_b867b012d0e7 |  |  | nó extract |
+| 96 | `trace.span` | ok | 0 ms | msg_b867b012d0e7 |  |  | nó apply |
+| 97 | `trace.span` | ok | 0 ms | msg_b867b012d0e7 |  |  | nó route |
+| 98 | `handoff.opened` | opened |  | msg_b867b012d0e7 |  |  | regra ready_to_close · prioridade fim_feliz |
+| 99 | `conversation.status` | handed_off |  | msg_b867b012d0e7 |  |  |  |
+| 100 | `trace.span` | ok | 0 ms | msg_b867b012d0e7 |  |  | nó handoff |
+| 101 | `message.sent` | sent |  | msg_b867b012d0e7 |  |  |  |
+| 102 | `trace.span` | ok | 0 ms | msg_b867b012d0e7 |  |  | nó deliver |
+| 103 | `message.received` | processed |  | msg_b867b012d0e7 |  |  |  |
+| 104 | `turn.finished` | handed_off | 1663 ms | msg_b867b012d0e7 |  |  |  |

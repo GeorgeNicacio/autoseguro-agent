@@ -6,7 +6,7 @@
 |---|---|
 | **Claude (claude.ai)** | Conversa de planejamento: leitura do desafio e do quote-service, escolha de stack, plano de 3 dias. Virou o PDF que guiou a execução (não versionado; ver abaixo). |
 | **Claude Code (app desktop, Claude Opus 5.5)** | Execução inteira: SDD antes do código, TDD por tarefa, análise do dataset, implementação, testes de contrato/caos/golden contra a API real em Docker, documentação e este sanitizador. |
-| **Claude (API, `claude-opus-5-5`)** | É o LLM do próprio agente (nó de extração), atrás de uma porta `LLMClient`. |
+| **Claude (API)** | É o LLM do próprio agente (nó de extração), atrás de uma porta `LLMClient`. Começou com `claude-opus-5-5`; o padrão hoje é `claude-haiku-5-5`, escolhido medindo os três modelos no golden set (Sonnet e Opus continuam selecionáveis). |
 
 Sessões do Claude Code exportadas e sanitizadas em [`claude-code/`](claude-code/) (o `.jsonl`
 cru, como a ferramenta salva). A conversa de planejamento no claude.ai e o PDF que saiu dela
@@ -72,6 +72,21 @@ sessão do Claude Code mostra o plano sendo lido, conferido contra o código e c
     exemplo "tipo 01310-100" do template de correção era lido como CEP real. Trocado por
     "8 números, com ou sem hífen" e coberto por teste. No mesmo teste, a mensagem de espera
     saía antes da saudação no 1º turno; corrigido com teste.
+
+13. **"Sim" que não fechava.** Testando o chat do dashboard, respondi "sim" à cotação e o
+    agente perguntou de novo se eu queria seguir. O LLM não sabia o que tinha sido
+    perguntado: entrou o contexto da pergunta pendente (prompt v3), a chave do cache de
+    extração passou a incluir esse contexto e o golden set ganhou cenários até o aceite
+    final (24). No FakeLLM, a regex de "sim" casava com "quero começar dia 15" e fechava
+    a venda com a cotação velha; virou casamento exato e trava enquanto há recotação pendente.
+14. **Botão que não fazia nada.** O golden com o Claude pedia confirmação com `confirm()`,
+    que o navegador embutido do app bloqueia em silêncio. Trocado por confirmação na
+    própria página, com o custo estimado. No mesmo teste, o chip do topo sempre dizia
+    "FakeLLM" mesmo com o Claude escolhido; passou a mostrar o padrão e os disponíveis.
+15. **Modelo mais barato com proteção em código.** Comparando os modelos pelo dashboard, o
+    Haiku 5.5 errou 2 de 24 (mensagem só com o CEP, nome do plano numa variação). Em vez de
+    pagar pelo modelo maior, o que não é ambíguo passou a ser preenchido por código
+    (`source: codigo` no evento); depois disso, 24/24 em três rodadas e o Haiku virou o padrão.
 
 ## Sanitização
 

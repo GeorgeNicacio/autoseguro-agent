@@ -38,7 +38,7 @@ Para desenvolver (precisa de [uv](https://docs.astral.sh/uv/)):
 ```bash
 make setup     # dependências travadas pelo uv.lock
 make test      # unitários + contrato contra a API real + cenários
-make golden    # 20 cenários roteirizados contra a API sem falha simulada
+make golden    # 24 cenários roteirizados contra a API sem falha simulada
 make chaos     # 50 conversas contra a API com 60% de falha e 20% de lentidão
 make check     # ruff + mypy --strict + testes (o que roda antes de cada commit)
 ```
@@ -185,10 +185,10 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Sucesso com retry (padrão, 100 conversas) | **97%** (previsto 97,7%) · 0 travas · 0 R$ sem cotação | [caos](docs/evidence/chaos_report.md) |
 | Caos: 60% falha + 20% lenta, 50 conversas | **0 travas · 0 R$ sem cotação · 100% das falhas em handoff** · 52% cotadas | [caos](docs/evidence/chaos_report.md) |
 | Golden set (FakeLLM) | **24 de 24** cenários (inclui jornadas até o aceite) | [golden](docs/evidence/golden_report.md) |
-| Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
+| Golden set com o Claude real | **60 de 60** em 3 rodadas com 20 cenários (prompt v2; v1 tinha 18/20) · **24 de 24** com 24 cenários (prompt v3) | [golden Claude](docs/evidence/golden_claude.md) |
 | Comparativo de modelos (24 cenários) → **padrão: Haiku 5.5** | Opus 5.5 24/24 · US$ 0,161 · Sonnet 5.5 24/24 · US$ 0,091 · **Haiku 5.5 24/24 em 3 rodadas · ~US$ 0,005** | [comparativo](docs/evidence/model_comparison.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
-| Testes automatizados | 293 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
+| Testes automatizados | 316 + 24 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
 
 Golden set (resumo; tabela completa na evidência):
 
@@ -203,12 +203,15 @@ Golden set (resumo; tabela completa na evidência):
 | G10 / G11 | API fora · API lenta 2× | handoff honesto sem R$ · espera e cotação · passou |
 | G12 / G13 / G14 | CEP incompleto · sinistro · Uber | `stuck` · `out_of_scope` · passou |
 | G16 / G17 / G18 | Sem plano · franquia alta · vou pensar | recomenda 1 · explica · resume · passou |
+| G20 / G21 / G22 / G23 | Jornada completa · aceite com "sim" · troca da data (pró-rata) · compara Premium e aceita | `ready_to_close` com a cotação certa · passou |
 
 O que o Claude real ensinou: rodando o golden set com o modelo de verdade, a v1 do prompt
 fez 18/20 e expôs dois bugs de código e três ambiguidades de prompt ("quero cotar" lido
 como compra, "franquia alta" lido como reclamação). Com o prompt v2, 60/60 em três
-rodadas ([detalhes](docs/evidence/golden_claude.md)). A [demo](docs/demo-conversation.md)
-foi gerada com o Claude.
+rodadas ([detalhes](docs/evidence/golden_claude.md)). Depois, o golden cresceu para 24
+cenários até o aceite final (prompt v3, com a pergunta pendente no contexto). A
+[demo](docs/demo-conversation.md) foi gerada com o Claude Haiku 5.5, o modelo padrão, e
+mostra timeout, 502 e 500 recuperados por retry, tokens e custo de cada chamada ao LLM.
 
 O que o caos ensinou: a primeira versão do breaker contava **tentativas**; os critérios
 passavam, mas só 10% das conversas eram cotadas, porque o circuito abria com a API apenas
@@ -292,7 +295,7 @@ infraestrutura maior. Num projeto real, com volume e SLA, a escolha seria mais r
   handoff, custo e latência com a versão atual e só promovemos se não houver regressão.
 - Cache semântico (embeddings) para mensagens parecidas, e não só iguais, com limiar validado
   no golden set.
-- O golden set com o Claude real tem 20 cenários; em produção eu ampliaria com conversas
+- O golden set com o Claude real tem 24 cenários; em produção eu ampliaria com conversas
   reais anonimizadas e rodaria a cada mudança de prompt ou de modelo.
 - Cofre de PII em memória: o checkpoint sobrevive a restart, o cofre não. Faria uma tabela
   cifrada com acesso restrito.
