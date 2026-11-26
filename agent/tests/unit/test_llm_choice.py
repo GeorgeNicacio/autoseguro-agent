@@ -15,9 +15,9 @@ def settings(key: bool = True) -> Settings:
 def test_options_list_every_claude_model_only_with_key() -> None:
     assert llm_options(settings()) == [
         "fake",
-        "claude-opus-5-5",
-        "claude-sonnet-5-5",
         "claude-haiku-5-5",
+        "claude-sonnet-5-5",
+        "claude-opus-5-5",
     ]
     assert llm_options(settings(key=False)) == ["fake"]
 
@@ -32,3 +32,15 @@ def test_named_llm_uses_the_chosen_model() -> None:
     haiku = make_named_llm(settings(), "claude-haiku-5-5")
     assert isinstance(haiku, AnthropicLLM)
     assert haiku._model == "claude-haiku-5-5"
+
+
+def test_default_model_is_haiku() -> None:
+    """Escolha por medição (ADR-017): mais barato que ainda passa em todo o golden set."""
+    assert Settings().llm_model == "claude-haiku-5-5"
+
+
+def test_anthropic_without_key_falls_back_to_fake() -> None:
+    from autoseguro_agent.bootstrap import effective_llm_mode
+
+    assert effective_llm_mode(Settings(llm_provider="anthropic", anthropic_api_key=None)) == "fake"
+    assert effective_llm_mode(settings()) == "anthropic"

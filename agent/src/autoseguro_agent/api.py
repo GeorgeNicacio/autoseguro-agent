@@ -101,7 +101,7 @@ def create_api(
     cache: CacheStore | None = None,
     llm_mode: str = "fake",
     llm_options: list[str] | None = None,
-    default_model: str = "claude-opus-5-5",
+    default_model: str = "claude-haiku-5-5",
 ) -> FastAPI:
     api = FastAPI(title="AutoSeguro Agent", version="0.2.0", lifespan=lifespan)
     dispatch: Dispatcher = dispatcher or InlineDispatcher(agent)
@@ -273,7 +273,7 @@ def _first_delivery(store: CacheStore, wa_message_id: str) -> bool:
 def _production_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(api: FastAPI) -> AsyncIterator[None]:
-        from autoseguro_agent.bootstrap import build_app, llm_options
+        from autoseguro_agent.bootstrap import build_app, effective_llm_mode, llm_options
 
         built = await build_app(persistent=True, log_json=True)
         inner = create_api(
@@ -281,7 +281,7 @@ def _production_app() -> FastAPI:
             built.events,
             dispatcher=built.dispatcher,
             cache=built.cache,
-            llm_mode=built.settings.llm_provider,
+            llm_mode=effective_llm_mode(built.settings),
             llm_options=llm_options(built.settings),
             default_model=built.settings.llm_model,
         )

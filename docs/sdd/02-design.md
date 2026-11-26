@@ -178,11 +178,11 @@ quote(req) ──> breaker.allow()? ──não──> QuoteOutcome.failed(circui
 
 ## 12. Adaptador Claude (ADR-001)
 
-**Decisão (2026-11-25):** provedor Anthropic, SDK oficial `anthropic` em Python, modelo `claude-opus-5-5`.
+**Decisão (2026-11-25):** provedor Anthropic, SDK oficial `anthropic` em Python, modelo `claude-opus-5-5`. **Atualização (2026-11-26):** padrão `claude-haiku-5-5`, escolhido por medição no golden set (ADR-017).
 
 ```python
 response = client.messages.parse(
-    model=settings.llm_model,                 # "claude-opus-5-5"
+    model=settings.llm_model,                 # "claude-haiku-5-5" (padrão)
     max_tokens=2048,
     system=EXTRACT_PROMPT_V1,                 # SPARK, estável → elegível a prompt caching
     messages=[{"role": "user", "content": masked_turn_payload}],

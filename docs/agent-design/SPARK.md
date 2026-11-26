@@ -110,7 +110,7 @@ Exemplos no prompt (mascarados, sem preço):
 - `"bati o carro ontem"` → intents `[claim]`.
 - `"sei lá, uns 30 e poucos"` → idade null… confidence low → pergunta de novo.
 
-Parâmetros: Claude Opus 5.5 (`claude-opus-5-5`) via `client.messages.parse(output_format=ExtractionResult)`,
+Parâmetros: Claude Haiku 5.5 (`claude-haiku-5-5`, padrão desde o ADR-017; Sonnet e Opus 5.5 selecionáveis) via `client.messages.parse(output_format=ExtractionResult)`,
 `effort: low`, sem `temperature` (não aceito pelos modelos atuais), timeout de 10 s, retries do SDK;
 `stop_reason == "refusal"` tratado como indisponível;
 LLM indisponível → template "tive um problema aqui, já te respondo" + handoff se repetir.

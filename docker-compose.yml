@@ -30,7 +30,7 @@ services:
 
   # API do agente: webhook WhatsApp, dashboard e métricas em http://localhost:8080
   # Só enfileira e lê; quem roda o agente é o worker.
-  # Sem chave roda com o FakeLLM; com chave: AGENT_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=...
+  # Com ANTHROPIC_API_KEY em agent/.env usa o Claude Haiku 5.5; sem chave, o FakeLLM.
   agent:
     build: ./agent
     ports:
@@ -47,7 +47,8 @@ services:
       AGENT_QUOTE_BASE_URL: http://quote-api:8000
       AGENT_GOLDEN_QUOTE_URL: http://quote-api-stable:8000
       AGENT_REDIS_URL: redis://redis:6379/0
-      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-fake}
+      # Claude Haiku 5.5 se houver ANTHROPIC_API_KEY em agent/.env; sem chave, FakeLLM.
+      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-anthropic}
       AGENT_QUOTE_RETRY_DELAYS_S: ${AGENT_QUOTE_RETRY_DELAYS_S:-60,300,900}
     volumes:
       - agent-data:/data

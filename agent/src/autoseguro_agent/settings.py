@@ -25,10 +25,12 @@ class Settings(BaseSettings):
     breaker_open_s: float = 30.0
 
     llm_provider: Literal["anthropic", "fake"] = "anthropic"
-    llm_model: str = "claude-opus-5-5"  # modelo padrão quando o provedor é anthropic
+    # Modelo padrão quando o provedor é anthropic. Haiku 5.5: 24/24 no golden set em 3
+    # rodadas, ~33x mais barato que o Opus 5.5 (docs/evidence/model_comparison.md, ADR-017).
+    llm_model: str = "claude-haiku-5-5"
     # Modelos do Claude oferecidos no dashboard (chat e golden set), para comparar
     # acerto, custo e latência. Preços em telemetry.PRICES_PER_MTOK.
-    claude_models_csv: str = "claude-opus-5-5,claude-sonnet-5-5,claude-haiku-5-5"
+    claude_models_csv: str = "claude-haiku-5-5,claude-sonnet-5-5,claude-opus-5-5"
     llm_effort: Literal["low", "medium", "high"] = "low"
     llm_timeout_s: float = 10.0
     anthropic_api_key: SecretStr | None = Field(

@@ -46,7 +46,7 @@ def ok_response(parsed: ExtractionResult | None, stop: str = "end_turn") -> Any:
 def test_usage_becomes_cost_stats() -> None:
     """REQ-80: tokens e custo pela tabela de preços (opus 5.5: 4 / 20 / 0,20 por MTok)."""
     msgs = FakeMessages(ok_response(ExtractionResult()))
-    llm = AnthropicLLM(client=client(msgs))
+    llm = AnthropicLLM(model="claude-opus-5-5", client=client(msgs))
     llm.extract(REQ)
     stats = llm.last_stats
     assert stats is not None
@@ -61,7 +61,7 @@ def test_calls_parse_with_schema_effort_and_no_temperature() -> None:
     llm = AnthropicLLM(client=client(msgs))
     assert llm.extract(REQ) == expected
     call = msgs.calls[0]
-    assert call["model"] == "claude-opus-5-5"
+    assert call["model"] == "claude-haiku-5-5"  # padrão (ADR-017)
     assert call["output_format"] is ExtractionResult
     assert call["output_config"] == {"effort": "low"}
     assert "temperature" not in call

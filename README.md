@@ -27,10 +27,11 @@ Sem `make`: os comandos de cada alvo estão no [`Makefile`](Makefile). Para conv
 docker compose exec agent python -m autoseguro_agent.cli --fake-llm --events
 ```
 
-Por padrão o agente sobe com o `FakeLLM` (extrator determinístico, sem chave). Para usar o
-Claude, coloque `ANTHROPIC_API_KEY=...` em `agent/.env` (não versionado): o dashboard passa a
-oferecer **FakeLLM ou Claude em cada conversa** e no golden set. `AGENT_LLM_PROVIDER=anthropic`
-só muda o padrão (webhook e conversas sem escolha).
+Sem chave, o agente sobe com o `FakeLLM` (extrator determinístico). Com `ANTHROPIC_API_KEY=...`
+em `agent/.env` (não versionado), o padrão passa a ser o **Claude Haiku 5.5**, escolhido por
+medição ([comparativo](docs/evidence/model_comparison.md)), e o dashboard oferece FakeLLM,
+Haiku, Sonnet ou Opus 5.5 em cada conversa e no golden set. `AGENT_LLM_PROVIDER=fake` força o
+FakeLLM; `AGENT_LLM_MODEL` troca o modelo padrão.
 
 Para desenvolver (precisa de [uv](https://docs.astral.sh/uv/)):
 
@@ -185,7 +186,7 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Caos: 60% falha + 20% lenta, 50 conversas | **0 travas · 0 R$ sem cotação · 100% das falhas em handoff** · 52% cotadas | [caos](docs/evidence/chaos_report.md) |
 | Golden set (FakeLLM) | **24 de 24** cenários (inclui jornadas até o aceite) | [golden](docs/evidence/golden_report.md) |
 | Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
-| Comparativo de modelos (24 cenários) | Opus 5.5 24/24 · US$ 0,161 · Sonnet 5.5 24/24 · US$ 0,091 · **Haiku 5.5 24/24 em 3 rodadas · ~US$ 0,005** | [comparativo](docs/evidence/model_comparison.md) |
+| Comparativo de modelos (24 cenários) → **padrão: Haiku 5.5** | Opus 5.5 24/24 · US$ 0,161 · Sonnet 5.5 24/24 · US$ 0,091 · **Haiku 5.5 24/24 em 3 rodadas · ~US$ 0,005** | [comparativo](docs/evidence/model_comparison.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
 | Testes automatizados | 293 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
 

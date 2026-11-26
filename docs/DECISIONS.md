@@ -8,7 +8,7 @@ Formato: contexto → decisão → alternativa descartada → trade-off. Datas e
 - **Alternativa:** agente com tools escolhendo quando cotar e o que responder.
 - **Trade-off:** menos "conversa natural" nas perguntas (vêm de templates), em troca de comportamento previsível e testável nó a nó.
 
-## ADR-002 · Claude `claude-opus-5-5` com `messages.parse`, `effort: low`, sem `temperature`
+## ADR-002 · Claude com `messages.parse`, `effort: low`, sem `temperature` (modelo inicial: Opus 5.5; padrão atual: Haiku 5.5, ADR-017)
 - **Contexto:** o plano pedia "temperatura 0"; a API atual do Claude não aceita parâmetros de amostragem (400).
 - **Decisão:** saída estruturada (`output_format=ExtractionResult`), `effort: low`, system prompt fixo (cacheável) e versionado em formato SPARK. Recusa do modelo e erros do SDK viram `LLMUnavailableError`.
 - **Alternativa:** temperatura 0 com JSON livre parseado na mão.
@@ -89,4 +89,4 @@ Formato: contexto → decisão → alternativa descartada → trade-off. Datas e
 - **Contexto:** o dashboard passou a permitir escolher Opus, Sonnet ou Haiku 5.5 por conversa e no golden set, para achar o modelo mais barato que ainda acerta tudo.
 - **Medição:** Opus 24/24 (US$ 0,161 por rodada), Sonnet 24/24 (US$ 0,091), Haiku 22/24 (US$ 0,005). As 2 falhas do Haiku eram dados extraíveis sem interpretação (mensagem só com o CEP; nome do plano).
 - **Decisão:** quando a mensagem tem um único token de CEP ou um único nome de plano e o LLM não devolve, o código preenche (`source: codigo` no evento). Com isso o Haiku fez 24/24 em 3 rodadas, ~33× mais barato que o Opus, mesma latência ([evidência](evidence/model_comparison.md)).
-- **Trade-off:** inferir o plano pelo nome escrito pode errar numa negação ("não quero o premium"); o cenário é raro e o lead vê a cotação antes de fechar. O modelo padrão continua configurável (`AGENT_LLM_MODEL`).
+- **Trade-off:** inferir o plano pelo nome escrito pode errar numa negação ("não quero o premium"); o cenário é raro e o lead vê a cotação antes de fechar. **Padrão trocado para `claude-haiku-5-5` em 2026-11-26**; Sonnet e Opus continuam selecionáveis no dashboard e por `AGENT_LLM_MODEL`.

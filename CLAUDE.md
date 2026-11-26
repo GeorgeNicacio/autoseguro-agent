@@ -17,7 +17,7 @@
 9. Nunca commitar `.env`, chaves, parquet bruto, nem dados pessoais do autor.
 
 ## Stack
-LLM: Claude `claude-opus-5-5` via SDK `anthropic` (`messages.parse`, `effort: low`, **sem** `temperature`).
+LLM: Claude `claude-haiku-5-5` (padrão, escolhido por medição no golden set; Sonnet/Opus 5.5 selecionáveis) via SDK `anthropic` (`messages.parse`, `effort: low`, **sem** `temperature`).
 Python 3.12 · uv · ruff · mypy --strict · FastAPI · LangGraph · Pydantic v2 · httpx · tenacity · structlog · SQLite · pytest · respx · polars.
 
 ## Comandos

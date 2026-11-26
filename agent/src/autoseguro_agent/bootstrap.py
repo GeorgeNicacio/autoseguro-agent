@@ -81,6 +81,15 @@ def llm_options(settings: Settings) -> list[str]:
     return ["fake", *settings.claude_models] if settings.anthropic_api_key else ["fake"]
 
 
+def effective_llm_mode(settings: Settings) -> str:
+    """Provedor que o agente usa de fato: anthropic sem chave cai no FakeLLM."""
+    return (
+        "anthropic"
+        if settings.llm_provider == "anthropic" and settings.anthropic_api_key
+        else "fake"
+    )
+
+
 def resolve_llm_choice(settings: Settings, choice: str | None) -> str | None:
     """'anthropic' (compatibilidade) vira o modelo padrão; o resto passa como está."""
     return settings.llm_model if choice == "anthropic" else choice

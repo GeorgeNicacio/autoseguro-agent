@@ -45,7 +45,7 @@ def render_user_message(req: ExtractionRequest) -> str:
 class AnthropicLLM:
     def __init__(
         self,
-        model: str = "claude-opus-5-5",
+        model: str = "claude-haiku-5-5",
         effort: Literal["low", "medium", "high"] = "low",
         timeout_s: float = 10.0,
         client: Any | None = None,
