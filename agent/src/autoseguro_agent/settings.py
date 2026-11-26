@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     breaker_open_s: float = 30.0
 
     llm_provider: Literal["anthropic", "fake"] = "anthropic"
-    llm_model: str = "claude-opus-5-5"
+    llm_model: str = "claude-opus-5-5"  # modelo padrão quando o provedor é anthropic
+    # Modelos do Claude oferecidos no dashboard (chat e golden set), para comparar
+    # acerto, custo e latência. Preços em telemetry.PRICES_PER_MTOK.
+    claude_models_csv: str = "claude-opus-5-5,claude-sonnet-5-5,claude-haiku-5-5"
     llm_effort: Literal["low", "medium", "high"] = "low"
     llm_timeout_s: float = 10.0
     anthropic_api_key: SecretStr | None = Field(
@@ -49,6 +52,11 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_is_none(cls, v: object) -> object:
         return None if v in ("", None) else v
+
+    @property
+    def claude_models(self) -> list[str]:
+        models = [m.strip() for m in self.claude_models_csv.split(",") if m.strip()]
+        return models if self.llm_model in models else [self.llm_model, *models]
 
     @property
     def retry_delays(self) -> list[int]:

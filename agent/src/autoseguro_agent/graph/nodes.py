@@ -13,6 +13,7 @@ Toda mensagem passa por `deliver`, que roda o validador de saída antes de envia
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -28,7 +29,12 @@ from autoseguro_agent.domain.eligibility import (
     validate_veiculo_ano,
 )
 from autoseguro_agent.domain.events import Event, EventType
-from autoseguro_agent.domain.extraction import ExtractionRequest, ExtractionResult, Intent
+from autoseguro_agent.domain.extraction import (
+    ExtractionRequest,
+    ExtractionResult,
+    Intent,
+    SlotStr,
+)
 from autoseguro_agent.domain.handoff import HandoffContext, HandoffDecision, decide_handoff
 from autoseguro_agent.domain.models import LeadProfile, QuoteRequest, QuoteResult
 from autoseguro_agent.domain.output_validator import validate_output
@@ -64,6 +70,34 @@ class Deps:
     # Vazio: sempre `llm`.
     llms: dict[str, Any] = field(default_factory=dict)
     quote_retry_delays_s: tuple[int, ...] = (60, 300, 900)
+
+
+_CEP_TOKEN = re.compile(r"<CEP_\d+>")
+_PLAN_NAME = re.compile(r"\b(essencial|completo|premium)\b", re.IGNORECASE)
+
+
+def complete_unambiguous(
+    ex: ExtractionResult, masked_text: str
+) -> tuple[ExtractionResult, set[str]]:
+    """Proteção determinística: o que dá para extrair sem ambiguidade não depende do modelo.
+
+    - Um único token de CEP na mensagem: o mascarador já provou que é um CEP de 8 dígitos.
+    - Um único nome de plano escrito: é o plano que o lead quer (ou quer comparar).
+    Achado comparando modelos: o Haiku 5.5 devolvia vazio para uma mensagem só com o CEP.
+    """
+    update: dict[str, object] = {}
+    if ex.cep_token is None:
+        tokens = set(_CEP_TOKEN.findall(masked_text))
+        if len(tokens) == 1:
+            update["cep_token"] = SlotStr(value=tokens.pop(), confidence="high")
+    if ex.plano_id is None:
+        names = {n.lower() for n in _PLAN_NAME.findall(masked_text)}
+        if len(names) == 1:
+            update["plano_id"] = names.pop()
+    if not update:
+        return ex, set()
+    slots = {"cep_token" if k == "cep_token" else k for k in update}
+    return ex.model_copy(update=update), slots
 
 
 class Nodes:
@@ -196,6 +230,7 @@ class Nodes:
     def apply(self, s: ConversationState) -> Update:
         """Aplica os slots extraídos com validação local e checa a política."""
         ex_data = s.get("extraction")
+        inferred: set[str] = set()
         profile = self.profile(s)
         failures = dict(s.get("slot_failures", {}))
         streak = s.get("low_confidence_streak", 0)
@@ -206,7 +241,9 @@ class Nodes:
         today = self.today()
 
         if ex_data:
-            ex = ExtractionResult.model_validate(ex_data)
+            ex, inferred = complete_unambiguous(
+                ExtractionResult.model_validate(ex_data), s["turn"]["text"]
+            )
             filled_high = False
 
             def take(slot: str, value: Any, error: Any) -> None:
@@ -290,7 +327,13 @@ class Nodes:
                 if (slot == "cep_token")
                 else value
             )
-            self.emit(s, "slot.updated", "ok", payload={"slot": slot, "value": str(shown)})
+            source = "codigo" if ex_data and slot in inferred else "llm"
+            self.emit(
+                s,
+                "slot.updated",
+                "ok",
+                payload={"slot": slot, "value": str(shown), "source": source},
+            )
 
         refusal = policy_refusal(new_profile, self.d.gateway.rules(), today)
         if refusal:

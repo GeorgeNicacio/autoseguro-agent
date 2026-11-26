@@ -130,3 +130,10 @@ def test_chat_with_explicit_fake_llm(client: TestClient) -> None:
     r = client.post("/api/chat", json={"text": "Oi, tenho um Onix 2022", "llm": "fake"})
     assert r.status_code == 200
     assert any("idade" in m.lower() for m in r.json()["messages"])
+
+
+def test_chat_rejects_unknown_model(client: TestClient) -> None:
+    assert (
+        client.post("/api/chat", json={"text": "oi", "llm": "claude-haiku-5-5"}).status_code == 400
+    )
+    assert client.get("/api/golden/history").json() == []

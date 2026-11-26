@@ -370,3 +370,44 @@ async def test_yes_without_open_question_is_not_acceptance() -> None:
     assert llm.requests[-1].awaiting is None
     assert agent.state("c51")["status"] == "active"
     assert gw.requests == []
+
+
+# --- Proteção determinística (achado comparando modelos: Haiku 5.5) ------------------
+
+
+async def test_bare_cep_is_taken_even_if_llm_returns_nothing() -> None:
+    script = [
+        ExtractionResult(
+            idade=SlotInt(value=35, confidence="high"),
+            veiculo_ano=SlotInt(value=2022, confidence="high"),
+        ),
+        ExtractionResult(),  # o modelo não copiou o token do CEP
+    ]
+    agent, _, _, events = make_agent(llm=FakeLLM(script=script))
+    await agent.handle("c60", "tenho 35 anos e um Onix 2022")
+    await agent.handle("c60", "01310-100")
+    state = agent.state("c60")
+    assert state["profile"]["cep_token"] == "<CEP_1>"
+    assert state["pending_slot"] == "plano_id"
+    sources = [
+        e.payload.get("source")
+        for e in events.all
+        if e.event_type == "slot.updated" and e.payload.get("slot") == "cep_token"
+    ]
+    assert sources == ["codigo"]
+
+
+async def test_single_plan_name_is_taken_when_llm_misses_it() -> None:
+    script = [
+        ExtractionResult(
+            idade=SlotInt(value=35, confidence="high"),
+            veiculo_ano=SlotInt(value=2022, confidence="high"),
+            cep_token=SlotStr(value="<CEP_1>", confidence="high"),
+            plano_id="completo",
+        ),
+        ExtractionResult(intents=["compare_plans"]),  # sem plano_id
+    ]
+    agent, gw, _, _ = make_agent(llm=FakeLLM(script=script))
+    await agent.handle("c61", "35 anos, Onix 2022, cep 01310-100, completo")
+    await agent.handle("c61", "e o premium?")
+    assert [q.plano_id for q in gw.requests] == ["completo", "premium"]

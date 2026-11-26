@@ -30,6 +30,7 @@ from autoseguro_agent.agent import Agent, MessageType
 from autoseguro_agent.dispatch import Dispatcher, InlineDispatcher
 from autoseguro_agent.metrics import compute, conversation_summaries, trace
 from autoseguro_agent.ports import EventStore
+from autoseguro_agent.telemetry import PRICES_PER_MTOK
 
 MEDIA_TYPES: dict[str, MessageType] = {
     "image": "image",
@@ -74,11 +75,13 @@ class ChatIn(BaseModel):
     conversation_id: str | None = None
     text: str = ""
     message_type: Literal["text", "image", "audio", "document"] = "text"
-    llm: Literal["fake", "anthropic"] | None = None  # None: mantém a da conversa ou o padrão
+    # "fake", um id de modelo do Claude (ex.: claude-haiku-5-5) ou "anthropic" (modelo padrão).
+    # None: mantém o da conversa ou o padrão do ambiente.
+    llm: str | None = None
 
 
 class GoldenIn(BaseModel):
-    llm: Literal["fake", "anthropic"] = "fake"
+    llm: str = "fake"
 
 
 def conversation_id_for(phone: str) -> str:
@@ -98,11 +101,13 @@ def create_api(
     cache: CacheStore | None = None,
     llm_mode: str = "fake",
     llm_options: list[str] | None = None,
+    default_model: str = "claude-opus-5-5",
 ) -> FastAPI:
     api = FastAPI(title="AutoSeguro Agent", version="0.2.0", lifespan=lifespan)
     dispatch: Dispatcher = dispatcher or InlineDispatcher(agent)
     store: CacheStore = cache or NullCache()
     options = llm_options or ["fake"]
+    accepted = set(options) | ({"anthropic"} if len(options) > 1 else set())
 
     @api.get("/health")
     def health() -> dict[str, str]:
@@ -157,7 +162,7 @@ def create_api(
     # --- chat manual e golden set -------------------------------------------
     @api.post("/api/chat")
     async def chat(body: ChatIn) -> dict[str, Any]:
-        if body.llm and body.llm not in options:
+        if body.llm and body.llm not in accepted:
             raise HTTPException(
                 status_code=400,
                 detail=f"LLM '{body.llm}' indisponível: configure ANTHROPIC_API_KEY em agent/.env",
@@ -169,7 +174,7 @@ def create_api(
 
     @api.post("/api/golden")
     async def golden(body: GoldenIn) -> dict[str, Any]:
-        if body.llm not in options:
+        if body.llm not in accepted:
             raise HTTPException(status_code=400, detail=f"LLM '{body.llm}' indisponível")
         return await dispatch.submit_golden(body.llm)
 
@@ -180,6 +185,15 @@ def create_api(
         except CacheError:
             raw = None
         return json.loads(raw) if raw else {}
+
+    @api.get("/api/golden/history")
+    def golden_history() -> list[dict[str, Any]]:
+        """Comparativo das últimas rodadas do golden set por modelo: acerto, custo, latência."""
+        try:
+            raw = store.get("golden:history")
+        except CacheError:
+            raw = None
+        return list(json.loads(raw)) if raw else []
 
     @api.get("/api/jobs/{job_id}")
     def job(job_id: str) -> dict[str, Any]:
@@ -202,6 +216,9 @@ def create_api(
         data["config"] = {
             "llm_options": options,
             "llm_mode": llm_mode,
+            "default_model": default_model,
+            # US$ por 1M tokens: entrada, saída, leitura e escrita de cache.
+            "model_prices": {m: PRICES_PER_MTOK.get(m) for m in options if m != "fake"},
             "cache": "redis" if store.enabled else "off",
             "queue": dispatch.mode,
         }
@@ -266,6 +283,7 @@ def _production_app() -> FastAPI:
             cache=built.cache,
             llm_mode=built.settings.llm_provider,
             llm_options=llm_options(built.settings),
+            default_model=built.settings.llm_model,
         )
         api.router.routes.extend(inner.router.routes)
         yield

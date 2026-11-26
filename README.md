@@ -185,6 +185,7 @@ produção seria Postgres com a mesma tabela e as mesmas regras.
 | Caos: 60% falha + 20% lenta, 50 conversas | **0 travas · 0 R$ sem cotação · 100% das falhas em handoff** · 52% cotadas | [caos](docs/evidence/chaos_report.md) |
 | Golden set (FakeLLM) | **24 de 24** cenários (inclui jornadas até o aceite) | [golden](docs/evidence/golden_report.md) |
 | Golden set com o Claude real | **60 de 60** em 3 rodadas seguidas (prompt v2); v1 tinha 18/20 | [golden Claude](docs/evidence/golden_claude.md) |
+| Comparativo de modelos (24 cenários) | Opus 5.5 24/24 · US$ 0,161 · Sonnet 5.5 24/24 · US$ 0,091 · **Haiku 5.5 24/24 em 3 rodadas · ~US$ 0,005** | [comparativo](docs/evidence/model_comparison.md) |
 | Mascarador no dataset | 100% recall · 0 vazamentos · idades preservadas | [PII](docs/evidence/pii_recall.md) |
 | Testes automatizados | 293 + 20 golden + caos; `ruff` e `mypy --strict` limpos | `make check` |
 
@@ -262,8 +263,10 @@ Redis fora do ar não derruba o agente: o cache vira no-op e o evento registra `
 **Dashboard** (`/dashboard`, HTML estático + APIs `/api/*`): KPIs (conversas, cotadas, sucesso
 do `/quote`, custo do LLM e economia do cache, custo por conversa, hit rate dos caches,
 latência do turno, fila), chat manual (texto e mídia simulada, pela mesma fila do webhook,
-com **FakeLLM ou Claude escolhido por conversa**, trocável no meio dela), botão do golden set
-(FakeLLM ou Claude), lista de conversas com o LLM usado e, para cada uma, a transcrição
+com **FakeLLM ou um modelo do Claude (Opus, Sonnet ou Haiku 5.5) escolhido por conversa**,
+trocável no meio dela), botão do golden set
+(FakeLLM ou o modelo do Claude escolhido) com um **comparativo por modelo** de acerto, custo e
+latência, lista de conversas com o LLM usado e, para cada uma, a transcrição
 mascarada, a **cascata de spans por nó do grafo** em cada turno e todos os eventos com ids.
 
 ### Por que Redis e RQ aqui, e o que seria em produção

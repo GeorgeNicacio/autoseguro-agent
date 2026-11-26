@@ -84,3 +84,9 @@ Formato: contexto → decisão → alternativa descartada → trade-off. Datas e
 - **Cotação:** campos do cálculo segundo `/planos` + versão das regras + data do dia; CEP só pelo prefixo de 2 dígitos (a regra publicada), o que também evita guardar o CEP completo. Só resposta 200 é cacheada.
 - **Extração:** texto mascarado normalizado + dado esperado + data + prompt + modelo. Os dados já coletados ficam fora de propósito: mais hits, e a extração da mensagem quase não depende deles.
 - **Golden set roda sem cache:** ele avalia o fluxo e o modelo de verdade; com cache, a 2ª rodada não testaria nada.
+
+## ADR-017 · Modelo do Claude escolhido por medição, com proteção determinística
+- **Contexto:** o dashboard passou a permitir escolher Opus, Sonnet ou Haiku 5.5 por conversa e no golden set, para achar o modelo mais barato que ainda acerta tudo.
+- **Medição:** Opus 24/24 (US$ 0,161 por rodada), Sonnet 24/24 (US$ 0,091), Haiku 22/24 (US$ 0,005). As 2 falhas do Haiku eram dados extraíveis sem interpretação (mensagem só com o CEP; nome do plano).
+- **Decisão:** quando a mensagem tem um único token de CEP ou um único nome de plano e o LLM não devolve, o código preenche (`source: codigo` no evento). Com isso o Haiku fez 24/24 em 3 rodadas, ~33× mais barato que o Opus, mesma latência ([evidência](evidence/model_comparison.md)).
+- **Trade-off:** inferir o plano pelo nome escrito pode errar numa negação ("não quero o premium"); o cenário é raro e o lead vê a cotação antes de fechar. O modelo padrão continua configurável (`AGENT_LLM_MODEL`).

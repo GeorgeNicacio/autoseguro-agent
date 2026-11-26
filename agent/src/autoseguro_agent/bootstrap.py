@@ -77,8 +77,20 @@ def make_gateway(settings: Settings) -> HttpQuoteGateway:
 
 
 def llm_options(settings: Settings) -> list[str]:
-    """LLMs que o dashboard pode oferecer: FakeLLM sempre; Claude se houver chave."""
-    return ["fake", "anthropic"] if settings.anthropic_api_key else ["fake"]
+    """LLMs que o dashboard pode oferecer: FakeLLM sempre; cada modelo do Claude se houver chave."""
+    return ["fake", *settings.claude_models] if settings.anthropic_api_key else ["fake"]
+
+
+def resolve_llm_choice(settings: Settings, choice: str | None) -> str | None:
+    """'anthropic' (compatibilidade) vira o modelo padrão; o resto passa como está."""
+    return settings.llm_model if choice == "anthropic" else choice
+
+
+def make_named_llm(settings: Settings, name: str) -> LLMClient:
+    """'fake' ou um id de modelo do Claude."""
+    if name == "fake":
+        return FakeLLM()
+    return make_llm(settings.model_copy(update={"llm_provider": "anthropic", "llm_model": name}))
 
 
 def make_cache(settings: Settings) -> CacheStore:
@@ -110,17 +122,19 @@ async def build_app(
     # Os dois LLMs ficam disponíveis; o dashboard escolhe por conversa. Claude só entra
     # se houver chave. O padrão (webhook, conversa sem escolha) vem de AGENT_LLM_PROVIDER.
     llms: dict[str, LLMClient] = {}
-    for provider in llm_options(settings):
-        fake = provider == "fake"
-        llms[provider] = CachedLLM(
-            make_llm(settings.model_copy(update={"llm_provider": provider})),
+    for name in llm_options(settings):
+        fake = name == "fake"
+        llms[name] = CachedLLM(
+            make_named_llm(settings, name),
             cache,
-            model="fake" if fake else settings.llm_model,
+            model=name,
             prompt_version="heuristic" if fake else PROMPT_VERSION,
             ttl_s=settings.llm_cache_ttl_s,
             hot_threshold=settings.hot_threshold,
             hot_ttl_s=settings.hot_ttl_s,
         )
+    if settings.llm_model in llms:
+        llms["anthropic"] = llms[settings.llm_model]  # alias do modelo padrão
     llm = llms.get(settings.llm_provider, llms["fake"])
 
     store: EventStore

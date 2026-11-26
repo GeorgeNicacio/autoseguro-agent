@@ -98,8 +98,9 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
         <label for="chatllm" class="muted">LLM</label>
         <select id="chatllm" aria-label="LLM da conversa">
           <option value="fake">FakeLLM (sem custo)</option>
-          <option value="anthropic">Claude (custo real)</option>
+          <option value="claude">Claude (custo real)</option>
         </select>
+        <select id="chatmodel" aria-label="Modelo do Claude" hidden></select>
         <span class="chip mono" id="chatid">—</span>
       </div>
       <div class="chatlog" id="chatlog" aria-live="polite"></div>
@@ -118,14 +119,20 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fo
 
       <h2 style="margin-top:18px">Golden set</h2>
       <div class="row">
-        <select id="goldenllm">
+        <select id="goldenllm" aria-label="LLM do golden set">
           <option value="fake">FakeLLM (sem custo)</option>
-          <option value="anthropic">Claude (custo real)</option>
+          <option value="claude">Claude (custo real)</option>
         </select>
+        <select id="goldenmodel" aria-label="Modelo do Claude no golden set" hidden></select>
         <button class="primary" id="rungolden">Rodar cenários</button>
         <span class="muted" id="goldenstatus"></span>
       </div>
       <div class="scroll" id="goldenres" style="margin-top:10px"></div>
+
+      <h2 style="margin-top:18px">Comparativo de modelos (golden set)</h2>
+      <p class="note" style="margin-top:0">Cada rodada do golden registra acerto, custo e latência do LLM.
+        Use para achar o modelo mais barato que ainda passa em todos os cenários.</p>
+      <div class="scroll" id="goldenhist"></div>
     </div>
 
     <div class="panel">
@@ -197,10 +204,10 @@ function kv(target, pairs) {
 async function loadMetrics() {
   const m = await api("/api/metrics");
   const c = m.config || {};
-  applyLlmOptions(c.llm_options || ["fake"], c.llm_mode);
+  applyLlmOptions(c.llm_options || ["fake"], c.llm_mode, c.default_model, c.model_prices);
   $("#config").replaceChildren(
     el("span", { class: "chip", title: "Usado pelo webhook e por conversas sem escolha; o chat escolhe por conversa" },
-      "LLM padrão: ", el("b", {}, llmName(c.llm_mode))),
+      "LLM padrão: ", el("b", {}, c.llm_mode === "anthropic" ? llmName(c.default_model) : "FakeLLM")),
     el("span", { class: "chip" }, "disponíveis: ", el("b", {}, (c.llm_options || ["fake"]).map(llmName).join(", "))),
     el("span", { class: "chip" }, "cache: ", el("b", {}, c.cache)),
     el("span", { class: "chip" }, "fila: ", el("b", {}, c.queue)),
@@ -259,18 +266,37 @@ async function loadMetrics() {
 
 // ---------------- escolha do LLM ----------------
 let llmInit = false;
-function applyLlmOptions(options, defaultMode) {
-  for (const sel of [$("#chatllm"), $("#goldenllm")]) {
-    for (const opt of sel.options) {
-      const ok = options.includes(opt.value);
-      opt.disabled = !ok;
-      opt.textContent = opt.textContent.replace(" · sem chave", "") + (ok ? "" : " · sem chave");
+let modelPrices = {};
+const prettyModel = (m) => m.replace(/^claude-/, "Claude ").replace(/-(\d+)-(\d+)$/, " $1.$2")
+  .replace(/ (\w)/g, (x) => x.toUpperCase());
+const llmName = (v) => !v ? "—" : v === "fake" ? "FakeLLM" : v === "anthropic" ? "Claude" : prettyModel(v);
+const priceLabel = (m) => { const p = modelPrices[m]; return p ? ` · US$ ${p[0]} / ${p[1]} por MTok` : ""; };
+function applyLlmOptions(options, defaultMode, defaultModel, prices) {
+  modelPrices = prices || {};
+  const models = options.filter((o) => o !== "fake");
+  for (const [prov, modelSel] of [[$("#chatllm"), $("#chatmodel")], [$("#goldenllm"), $("#goldenmodel")]]) {
+    const claudeOpt = prov.querySelector('option[value="claude"]');
+    claudeOpt.disabled = !models.length;
+    claudeOpt.textContent = "Claude (custo real)" + (models.length ? "" : " · sem chave");
+    const want = models.join(",");
+    if (modelSel.dataset.models !== want) {
+      const keep = modelSel.value;
+      modelSel.replaceChildren(...models.map((m) => el("option", { value: m }, prettyModel(m) + priceLabel(m))));
+      modelSel.dataset.models = want;
+      modelSel.value = models.includes(keep) ? keep : (models.includes(defaultModel) ? defaultModel : models[0] || "");
     }
-    if (!options.includes(sel.value)) sel.value = "fake";
+    if (!models.length) prov.value = "fake";
+    modelSel.hidden = prov.value !== "claude";
   }
-  if (!llmInit) { llmInit = true; if (options.includes(defaultMode)) $("#chatllm").value = defaultMode; }
+  if (!llmInit) {
+    llmInit = true;
+    if (defaultMode === "anthropic" && models.length) { $("#chatllm").value = "claude"; $("#chatmodel").hidden = false; }
+  }
 }
-const llmName = (v) => v === "anthropic" ? "Claude" : "FakeLLM";
+const choice = (prov, modelSel) => prov.value === "claude" ? modelSel.value : "fake";
+for (const [prov, modelSel] of [[$("#chatllm"), $("#chatmodel")], [$("#goldenllm"), $("#goldenmodel")]]) {
+  prov.addEventListener("change", () => { modelSel.hidden = prov.value !== "claude"; });
+}
 let convLlm = null;
 
 // ---------------- conversas ----------------
@@ -283,7 +309,7 @@ async function loadConversations() {
     if (hide && r.source === "golden") continue;
     const tr = el("tr", { class: "click" },
       el("td", { class: "mono" }, r.conversation_id), el("td", {}, r.source),
-      el("td", {}, r.llm === "fake" ? "FakeLLM" : r.llm ? "Claude" : "—"),
+      el("td", {}, llmName(r.llm)),
       el("td", { class: "st " + r.status }, r.status), el("td", {}, r.handoff_rule || ""),
       el("td", {}, String(r.turns)), el("td", {}, String(r.quotes)), el("td", {}, fmtInt(r.tokens)),
       el("td", {}, fmtUsd(r.cost_usd)), el("td", { class: "muted" }, new Date(r.updated_at).toLocaleTimeString("pt-BR")));
@@ -357,7 +383,7 @@ function addMsg(kind, text) { const n = el("div", { class: "msg " + kind }, text
 function newChat() { conv = null; convLlm = null; $("#chatid").textContent = "nova conversa"; $("#chatlog").replaceChildren(); addMsg("sys", "Mande a primeira mensagem como se fosse o lead."); }
 async function send(text, type = "text") {
   if (type === "text" && !text.trim()) return;
-  const llm = $("#chatllm").value;
+  const llm = choice($("#chatllm"), $("#chatmodel"));
   if (llm !== convLlm) { addMsg("sys", `LLM desta conversa: ${llmName(llm)}`); convLlm = llm; }
   addMsg("lead", type === "text" ? text : `[${type}]`);
   $("#send").disabled = true;
@@ -395,12 +421,19 @@ function goldenTable(r) {
 let goldenArmed = null;
 function resetGoldenButton() { goldenArmed = null; $("#rungolden").textContent = "Rodar cenários"; $("#rungolden").classList.add("primary"); }
 $("#goldenllm").addEventListener("change", resetGoldenButton);
+$("#goldenmodel").addEventListener("change", resetGoldenButton);
+function estimateCost(model) {
+  // Pela última rodada desse modelo, se houver; senão, proporcional ao preço de entrada.
+  const last = goldenHistory.find((h) => h.model === model && h.cost_usd);
+  if (last) return last.cost_usd;
+  const p = modelPrices[model]; return p ? 0.30 * p[0] / 4 : 0.30;
+}
 $("#rungolden").addEventListener("click", async () => {
-  const llm = $("#goldenllm").value;
-  if (llm === "anthropic" && goldenArmed !== llm) {
+  const llm = choice($("#goldenllm"), $("#goldenmodel"));
+  if (llm !== "fake" && goldenArmed !== llm) {
     goldenArmed = llm;
-    $("#rungolden").textContent = "Confirmar: custo real (~US$ 0,30)";
-    $("#goldenstatus").textContent = "clique de novo para rodar com o Claude";
+    $("#rungolden").textContent = `Confirmar: custo real (~${fmtUsd(estimateCost(llm))})`;
+    $("#goldenstatus").textContent = `clique de novo para rodar com ${llmName(llm)}`;
     setTimeout(() => { if (goldenArmed) { resetGoldenButton(); $("#goldenstatus").textContent = ""; } }, 8000);
     return;
   }
@@ -408,13 +441,34 @@ $("#rungolden").addEventListener("click", async () => {
   $("#rungolden").disabled = true; $("#goldenstatus").textContent = "na fila…";
   try {
     const sub = await post("/api/golden", { llm });
-    $("#goldenstatus").textContent = llm === "anthropic" ? "rodando com o Claude (2 a 3 min)…" : "rodando (cerca de 30 s)…";
+    $("#goldenstatus").textContent = llm !== "fake" ? `rodando com ${llmName(llm)} (1 a 3 min)…` : "rodando (cerca de 30 s)…";
     await waitJob(sub, (done) => { goldenTable(done.result); $("#goldenstatus").textContent = ""; });
-    refresh();
+    refresh(); loadGoldenHistory();
   } catch (e) { $("#goldenstatus").textContent = "erro: " + e.message; }
   finally { $("#rungolden").disabled = false; }
 
 });
+
+let goldenHistory = [];
+async function loadGoldenHistory() {
+  try { goldenHistory = await api("/api/golden/history"); } catch { goldenHistory = []; }
+  const box = $("#goldenhist");
+  if (!goldenHistory.length) { box.replaceChildren(el("div", { class: "muted" }, "Nenhuma rodada registrada ainda.")); return; }
+  const head = ["Modelo", "Acerto", "Custo total", "Custo/conversa", "LLM p50 · p95", "Tokens (entrada · saída)", "Quando"];
+  const t = el("table", {}, el("thead", {}, el("tr", {}, ...head.map((h) => el("th", {}, h)))));
+  const tb = el("tbody");
+  for (const h of goldenHistory) {
+    const allOk = h.passed === h.total;
+    tb.append(el("tr", {},
+      el("td", {}, llmName(h.model)),
+      el("td", { class: allOk ? "ok st" : "bad st" }, `${h.passed}/${h.total}`),
+      el("td", {}, fmtUsd(h.cost_usd)), el("td", {}, fmtUsd(h.cost_per_conversation_usd)),
+      el("td", {}, `${fmtMs(h.llm_latency_p50_ms)} · ${fmtMs(h.llm_latency_p95_ms)}`),
+      el("td", {}, `${fmtInt(h.input_tokens)} · ${fmtInt(h.output_tokens)}`),
+      el("td", { class: "muted" }, h.finished_at ? new Date(h.finished_at).toLocaleString("pt-BR") : "")));
+  }
+  t.append(tb); box.replaceChildren(t);
+}
 
 // ---------------- ciclo ----------------
 async function refresh() { try { await Promise.all([loadMetrics(), loadConversations()]); } catch (e) { console.error(e); } }
@@ -423,6 +477,7 @@ $("#hidegolden").addEventListener("change", loadConversations);
 setInterval(() => { if ($("#auto").checked) refresh(); }, 5000);
 newChat(); refresh();
 api("/api/golden/last").then((r) => { if (r && r.results) goldenTable(r); }).catch(() => {});
+loadGoldenHistory();
 </script>
 </body>
 </html>
